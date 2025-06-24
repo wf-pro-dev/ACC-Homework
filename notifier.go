@@ -3,65 +3,117 @@ package main
 import (
 	"ACC-HOMEWORK/crud"
 	"fmt"
+	"math"
 	"os/exec"
-	"strings"
 	"time"
 )
 
-// sendNotification triggers a macOS notification
-func sendNotification(assign map[string]string) {
+func getUntilDeadline(deadline time.Time) string {
 
-	deadline_raw, err_date := time.Parse(time.DateOnly, assign["deadline"])
-	deadline := strings.Join(strings.Split(deadline_raw.Format(time.RFC1123), " ")[:3], " ")
+	today, err := time.Parse(time.DateOnly, time.Now().Format(time.DateOnly))
 
-	subtitle := fmt.Sprintf("%v / %v", deadline, assign["course_code"])
-	if err_date != nil {
-		panic(err_date)
-	}
-
-	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`display notification "%v" with title "%v" subtitle "%v" sound name "Frog"`, assign["todo"], assign["title"], subtitle))
-	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Error sending notification:", err)
+		return ""
 	}
+
+	if deadline.Equal(today) {
+		return "Today"
+	}
+
+	if deadline.Equal(today.AddDate(0, 0, 1)) {
+		return "Tomorrow"
+	}
+
+	daysRemaining := int(math.Ceil(time.Until(deadline).Hours() / 24))
+	return fmt.Sprintf("%d days remaining", daysRemaining)
+
 }
 
-// scheduleNotifications runs a loop that checks the time and triggers notifications
-func scheduleNotifications() {
-	notificationTimes := []string{"06:00", "13:00", "20:00"} // 6:00 AM, 1:00 PM, 8:00 PM
+// sendNotification sends a clickable notification that opens a URL when clicked
+func sendNotification(assign map[string]string) error {
+	title := fmt.Sprintf("%s: %s", assign["course_code"], assign["title"])
 
-	db, err_db := crud.GetDB()
-
-	if err_db != nil {
-		panic(err_db)
+	// Parse deadline and calculate days remaining
+	deadline, err := time.Parse(time.DateOnly, assign["deadline"][:10])
+	if err != nil {
+		return fmt.Errorf("failed to parse deadline: %w", err)
 	}
 
-	for {
-		now := time.Now()
-		currentTime := now.Format("15:04") // Format time as HH:MM
-		today := now.Format("2006-01-02")
-		days_7_later := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	subtitle := fmt.Sprintf("Due %s (%s)",
+		deadline.Format("Jan 2, 2006"),
+		getUntilDeadline(deadline))
 
-		assignements, err := crud.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE deadline > '%v' AND deadline < '%v' ", today, days_7_later), db)
-
-		if err != nil {
-			panic(err)
-		}
-
-		for _, t := range notificationTimes {
-			if currentTime == t {
-				for _, assign := range assignements {
-					sendNotification(assign)
-					time.Sleep(10 * time.Second)
-				}
-				// Avoid multiple notifications in one minute
-				time.Sleep(time.Minute)
-			}
-		}
-		time.Sleep(time.Second) // Check every second
+	// Build the terminal-notifier command
+	args := []string{
+		"-title", title,
+		"-subtitle", subtitle,
+		"-message", assign["todo"],
+		"-sound", "Frog",
+		"-timeout", "30", // Notification stays for 30 seconds
 	}
+
+	// Add click action if URL exists
+	if link, exists := assign["link"]; exists && link != "" {
+		args = append(args, "-open", link)
+	}
+
+	// Find terminal-notifier in common locations
+	locations := []string{
+		"/usr/local/bin/terminal-notifier",                         // Homebrew default
+		"/opt/homebrew/bin/terminal-notifier",                      // Apple Silicon Homebrew
+		"./terminal-notifier.app/Contents/MacOS/terminal-notifier", // Local copy
+	}
+
+	var cmd *exec.Cmd
+	var lastError error
+
+	// Try different locations until we find the binary
+	for _, path := range locations {
+		cmd = exec.Command(path, args...)
+		if err := cmd.Run(); err == nil {
+			return nil // Success!
+		} else {
+			lastError = err
+		}
+	}
+
+	return fmt.Errorf("failed to send notification (tried paths: %v): %w", locations, lastError)
+}
+
+// scheduleNotifications checks for upcoming assignments and notifies
+func scheduleNotifications() error {
+	db, err := crud.GetDB()
+	if err != nil {
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	now := time.Now()
+
+	query := fmt.Sprintf(
+		"SELECT * FROM assignements WHERE deadline BETWEEN '%s' AND '%s' ORDER BY deadline ASC",
+		now.Format(time.DateOnly),
+		now.AddDate(0, 0, 7).Format(time.DateOnly),
+	)
+
+	assignments, err := crud.GetHandler(query, db)
+
+	if err != nil {
+		return fmt.Errorf("query error: %w", err)
+	}
+
+	for _, assign := range assignments {
+		if err := sendNotification(assign); err != nil {
+			fmt.Printf("Error notifying for assignment %s: %v\n", assign["title"], err)
+		}
+		time.Sleep(5 * time.Second) // Space out notifications
+	}
+
+	return nil
 }
 
 func main() {
-	scheduleNotifications()
+	err := scheduleNotifications()
+	if err != nil {
+		panic(err)
+	}
 }

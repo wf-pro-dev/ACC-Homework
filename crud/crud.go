@@ -147,8 +147,10 @@ func PostHandler(newItem map[string]string, table string, db *sql.DB) error {
 	// Test if there is data to insert
 	if len(newItem) > 0 {
 
+		query := fmt.Sprintf("INSERT into %v (%v) VALUES (%v)", table, colomnsStr, valuesStr)
+		fmt.Println(query)
 		// Excution of the INSERT query
-		_, err := db.Query(fmt.Sprintf("INSERT into %v (%v) VALUES (%v)", table, colomnsStr, valuesStr))
+		_, err := db.Query(query)
 		// Handle error
 		if err != nil {
 			return fmt.Errorf("error while exec POST query: %w", err)
@@ -173,18 +175,18 @@ func PostHandler(newItem map[string]string, table string, db *sql.DB) error {
 //	True if the operation was succesful, False otherwise
 //
 // ***************************************************************
-func PutHanlder(id int, col string, newValue string, db *sql.DB) bool {
-	QUERY := fmt.Sprintf("UPDATE assignements SET %v = '%v' WHERE id='%v'", col, newValue, id)
-
+func PutHanlder(id int, col, table string, newValue string, db *sql.DB) (err error) {
+	QUERY := fmt.Sprintf("UPDATE %v SET %v = '%v' WHERE id='%v'", table, col, newValue, id)
+	fmt.Println(QUERY)
 	// Excution of the UPDATE query
-	_, err := db.Query(QUERY)
+	_, err = db.Query(QUERY)
 	// Handle error
 	if err != nil {
 		log.Fatalf("An error occured while executing query: %v", err)
-		return false
+
 	}
 
-	return true
+	return err
 }
 
 // ***************************************************************
@@ -193,7 +195,9 @@ func PutHanlder(id int, col string, newValue string, db *sql.DB) bool {
 //
 // params :
 //
-//	id (string) id of the row to delete
+//	table (string) name of the table to delete the row
+//	column (string) name of the column to delete the row
+//	value (string) value of the column to delete the row
 //	db (*sql.DB) SQL db connection object
 //
 // return :
@@ -201,16 +205,17 @@ func PutHanlder(id int, col string, newValue string, db *sql.DB) bool {
 //	True if the operation was succesful, False otherwise
 //
 // ***************************************************************
-func DeleteHandler(id string, db *sql.DB) bool {
-	QUERY := fmt.Sprintf("DELETE FROM assignements WHERE id='%v'", id)
+func DeleteHandler(table, column, value string, db *sql.DB) error {
+
+	QUERY := fmt.Sprintf("DELETE FROM %v WHERE %v='%v'", table, column, value)
 
 	// Excution of the DELETE query
 	_, err := db.Query(QUERY)
 	// Handle error
 	if err != nil {
 		log.Fatalf("An error occured while executing query: %v", err)
-		return false
+
 	}
 
-	return true
+	return err
 }
