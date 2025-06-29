@@ -19,18 +19,19 @@ func getColumns(arg string) (col string) {
 
 	if col == "" {
 		ColumnError(fmt.Sprintf("Invalid argument: -%s\n", arg))
-		os.Exit(1)
 	}
 
 	return col
 }
 
 func ColumnError(message string) {
+
 	fmt.Println(message)
 	fmt.Println("Available columns:\n")
 	for _, column := range types.COLUMNS {
 		fmt.Printf("  -%s (%s)\n", column[0:2], column)
 	}
+	os.Exit(1)
 }
 
 func CourseError(message string, COURSES_CODES []map[string]string) {
@@ -39,14 +40,13 @@ func CourseError(message string, COURSES_CODES []map[string]string) {
 	for _, course := range COURSES_CODES {
 		fmt.Printf("  %s\n", course["code"])
 	}
+	os.Exit(1)
 }
 
 func handleFlag(arg string) (columns []string, filters []assignment.Filter) {
 
 	if len(arg) < 3 {
-		fmt.Println("Error Handling Flag")
 		ColumnError(fmt.Sprintf("Invalid argument: %s\n", arg))
-		os.Exit(1)
 	}
 
 	if len(arg) > 3 && arg[3] == '=' {
@@ -109,7 +109,6 @@ func main() {
 
 	if !validCourse {
 		CourseError(fmt.Sprintf("Invalid course code: %s\n", courseName), COURSES_CODES)
-		os.Exit(1)
 	}
 
 	if err != nil {

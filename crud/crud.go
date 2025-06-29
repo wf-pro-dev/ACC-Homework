@@ -98,8 +98,9 @@ func GetHandler(query string, db *sql.DB) ([]map[string]string, error) {
 
 			// Handle byte slices (common for string data from databases)
 			// This converts []byte to string which is usually more useful
-
-			row[colName] = val
+			if val != "" {
+				row[colName] = val
+			}
 
 		}
 
@@ -127,7 +128,7 @@ func GetHandler(query string, db *sql.DB) ([]map[string]string, error) {
 //
 //	Return :
 //
-//	True if the operation was succesful, False otherwise
+//	Error in case of one , <nil> otherwise
 //
 // ***************************************************************
 func PostHandler(newItem map[string]string, table string, db *sql.DB) error {
@@ -148,7 +149,7 @@ func PostHandler(newItem map[string]string, table string, db *sql.DB) error {
 	if len(newItem) > 0 {
 
 		query := fmt.Sprintf("INSERT into %v (%v) VALUES (%v)", table, colomnsStr, valuesStr)
-		fmt.Println(query)
+
 		// Excution of the INSERT query
 		_, err := db.Query(query)
 		// Handle error
@@ -172,18 +173,16 @@ func PostHandler(newItem map[string]string, table string, db *sql.DB) error {
 //
 // return :
 //
-//	True if the operation was succesful, False otherwise
+//	Error in case of one , <nil> otherwise
 //
 // ***************************************************************
 func PutHanlder(id int, col, table string, newValue string, db *sql.DB) (err error) {
-	QUERY := fmt.Sprintf("UPDATE %v SET %v = '%v' WHERE id='%v'", table, col, newValue, id)
-	fmt.Println(QUERY)
+	query := fmt.Sprintf("UPDATE %v SET %v = '%v' WHERE id='%v'", table, col, newValue, id)
 	// Excution of the UPDATE query
-	_, err = db.Query(QUERY)
+	_, err = db.Query(query)
 	// Handle error
 	if err != nil {
 		log.Fatalf("An error occured while executing query: %v", err)
-
 	}
 
 	return err
@@ -207,10 +206,10 @@ func PutHanlder(id int, col, table string, newValue string, db *sql.DB) (err err
 // ***************************************************************
 func DeleteHandler(table, column, value string, db *sql.DB) error {
 
-	QUERY := fmt.Sprintf("DELETE FROM %v WHERE %v='%v'", table, column, value)
+	query := fmt.Sprintf("DELETE FROM %v WHERE %v='%v'", table, column, value)
 
 	// Excution of the DELETE query
-	_, err := db.Query(QUERY)
+	_, err := db.Query(query)
 	// Handle error
 	if err != nil {
 		log.Fatalf("An error occured while executing query: %v", err)

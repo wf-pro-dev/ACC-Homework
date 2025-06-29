@@ -14,7 +14,8 @@ import (
 
 const BASE_URL = "https://api.notion.com/v1"
 
-func sendRequest(req interface{}, method, url, notion_id string) (resp *http.Response, err error) {
+func sendRequest(req interface{}, method, url, notion_id string) (respBody []byte, err error) {
+
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -26,7 +27,13 @@ func sendRequest(req interface{}, method, url, notion_id string) (resp *http.Res
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	final_url := fmt.Sprintf("%s/%s/%s", BASE_URL, url, notion_id)
+
+	var final_url string
+	if notion_id != "" {
+		final_url = fmt.Sprintf("%s/%s/%s", BASE_URL, url, notion_id)
+	} else {
+		final_url = fmt.Sprintf("%s/%s", BASE_URL, url)
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, method, final_url, bytes.NewBuffer(jsonData))
 
@@ -36,13 +43,24 @@ func sendRequest(req interface{}, method, url, notion_id string) (resp *http.Res
 	httpReq.Header.Set("Notion-Version", "2022-06-28")
 
 	// Send request
-	resp, err = client.Do(httpReq)
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	return resp, nil
+	// Read response
+	respBody, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check for errors
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("notion API error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return respBody, nil
 }
 
 // AddAssignmentToNotion adds an assignment to Notion efficiently
@@ -72,7 +90,6 @@ func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (st
 	req.Parent.Type = "database_id"
 	req.Parent.DatabaseID = "17e40a21a7e381a18a85ccc380a0beec"
 	// Set deadline
-
 	req.Properties = &types.Properties{
 		Deadline: types.Deadline{
 			ID:   "_UjC",
@@ -135,49 +152,9 @@ func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (st
 	assignment_name_obj.Title = []types.RichText{titleText}
 	req.Properties.AssignmentName = assignment_name_obj
 
-	// Convert request to JSON
-	jsonData, err := json.Marshal(req)
+	resp, err := sendRequest(req, "POST", "pages", "")
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	fmt.Println(string(jsonData))
-
-	// Set up the HTTP client with timeouts for better reliability
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	// Create request with context for potential cancellation
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.notion.com/v1/pages", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Set headers
-	httpReq.Header.Set("Authorization", "Bearer "+os.Getenv("NOTION_API_KEY"))
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Notion-Version", "2022-06-28")
-
-	// Send request
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Check for errors
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("notion API error (status %d): %s", resp.StatusCode, string(respBody))
+		return "", err
 	}
 
 	// Parse response
@@ -186,19 +163,60 @@ func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (st
 	}
 
 	var notionResp NotionResponse
-	if err := json.Unmarshal(respBody, &notionResp); err != nil {
+	if err := json.Unmarshal(resp, &notionResp); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-
-	fmt.Println(notionResp)
 
 	return notionResp.ID, nil
 }
 
-func UpdateAssignementToNotion(assign map[string]string, col string, value string) (err error) {
+func UpdateAssignementToNotion(assign map[string]string, col string, value string, type_info map[string]string) (err error) {
 	var req interface{}
 
 	switch col {
+
+	case "course_code":
+		courseReq := types.UpdateCourseCodeRequest{}
+		courseReq.Properties = types.PropertiesWithRequiredCourseCode{}
+		courseReq.Properties.Courses = types.Courses{
+			ID:   "w%3FC%3B",
+			Type: "relation",
+			Relation: []types.Relation{
+				{
+					ID: value,
+				},
+			},
+		}
+		req = courseReq
+
+	case "deadline":
+		deadlineReq := types.UpdateDeadlineRequest{}
+		deadlineReq.Properties = types.PropertiesWithRequiredDeadline{}
+
+		dateObj := types.DateObject{
+			Start: value,
+		}
+
+		deadlineReq.Properties.Deadline = types.Deadline{
+			ID:   "_UjC",
+			Type: "date",
+			Date: &dateObj,
+		}
+
+		req = deadlineReq
+
+	case "link":
+		linkReq := types.UpdateLinkRequest{}
+		linkReq.Properties = types.PropertiesWithRequiredLink{}
+
+		linkReq.Properties.Link = types.Link{
+			ID:   "jgPD",
+			Type: "url",
+			URL:  value,
+		}
+
+		req = linkReq
+
 	case "title":
 		titleReq := types.UpdateTitleRequest{}
 		titleReq.Properties = types.PropertiesWithRequiredName{}
@@ -257,29 +275,19 @@ func UpdateAssignementToNotion(assign map[string]string, col string, value strin
 
 		req = todoReq
 
-	case "deadline":
-		deadlineReq := types.UpdateDeadlineRequest{}
-		deadlineReq.Properties = types.PropertiesWithRequiredDeadline{}
+	case "type":
 
-		dateObj := types.DateObject{
-			Start: value,
+		typeReq := types.UpdateTypeRequest{}
+		typeReq.Properties = types.PropertiesWithRequiredType{}
+
+		typeReq.Properties.Type = types.Type{
+			ID:     "S~Ce",
+			Type:   "select",
+			Select: type_info,
 		}
 
-		deadlineReq.Properties.Deadline = types.Deadline{
-			ID:   "_UjC",
-			Type: "date",
-			Date: &dateObj,
-		}
+		req = typeReq
 
-		req = deadlineReq
-
-	case "link":
-		linkReq := types.UpdateLinkRequest{}
-		linkReq.Properties = types.PropertiesWithRequiredLink{}
-
-		linkReq.Properties.Link = types.Link{
-			URL: value,
-		}
 	}
 
 	if req == nil {
@@ -287,6 +295,7 @@ func UpdateAssignementToNotion(assign map[string]string, col string, value strin
 	}
 
 	_, err = sendRequest(req, "PATCH", "pages", assign["notion_id"])
+
 	return err
 }
 

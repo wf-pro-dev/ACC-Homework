@@ -21,7 +21,7 @@ type Assignment struct {
 	Deadline   string
 	Title      string
 	Todo       string
-	CourseCode string
+	CourseCode string `db:"course_code,omitempty"`
 	Link       string
 }
 
@@ -59,6 +59,7 @@ func NewAssignment() *Assignment {
 	pwd := os.Getenv("PWD")
 	cmd := exec.Command("basename", pwd)
 	output, _ := cmd.CombinedOutput()
+	assignment.Link = "https://acconline.austincc.edu/ultra/stream"
 	assignment.CourseCode = strings.TrimSpace(string(output))
 
 	return assignment
@@ -89,8 +90,7 @@ func (a *Assignment) SetCourseCode(courseCode string) {
 	a.CourseCode = courseCode
 }
 
-// GetType returns the assignment type
-func (a *Assignment) GetType() string {
+func (a *Assignment) GetType(db *sql.DB) string {
 	return a.Type
 }
 
@@ -114,22 +114,23 @@ func (a *Assignment) GetCourseCode() string {
 	return a.CourseCode
 }
 
-func getCourse(course_code string, db *sql.DB) map[string]string {
+func GetObjCourse(course_code string, db *sql.DB) map[string]string {
+
 	query := fmt.Sprintf("SELECT notion_id FROM courses WHERE code='%v'", course_code)
-	fmt.Println(query)
 	course, err := crud.GetHandler(query, db)
 	if err != nil {
-		panic(err)
+		log.Fatal("Error getting course object: ", err)
 	}
 	return course[0]
 }
 
-func getType(type_name string, db *sql.DB) map[string]string {
+func GetObjType(type_name string, db *sql.DB) map[string]string {
 
-	type_info, err := crud.GetHandler(fmt.Sprintf("SELECT * FROM type WHERE name='%v'", type_name), db)
+	query := fmt.Sprintf("SELECT * FROM type WHERE name='%v'", type_name)
+	type_info, err := crud.GetHandler(query, db)
 
 	if err != nil {
-		panic(err)
+		log.Fatal("Error getting type object: ", err)
 	}
 	return type_info[0]
 }
@@ -137,7 +138,7 @@ func getType(type_name string, db *sql.DB) map[string]string {
 // ToMap converts the Assignment struct to a map[string]string
 // This maintains compatibility with the existing database operations
 func (a *Assignment) ToMap() map[string]string {
-	fmt.Println(a.ID)
+
 	return map[string]string{
 		"id":          strconv.Itoa(a.ID),
 		"notion_id":   a.NotionID,
@@ -154,20 +155,20 @@ func (a *Assignment) Add(db *sql.DB) (err error) {
 
 	assignment := a.ToMap()
 
-	assignment["link"] = ""
-
 	delete(assignment, "id")
 
 	err = crud.PostHandler(assignment, "assignements", db)
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error adding assignment to database: ", err)
+		return err
 	}
 
-	notion_id, err_notion := notion.AddAssignmentToNotion(assignment, getType(assignment["type"], db), getCourse(assignment["course_code"], db))
+	notion_id, err_notion := notion.AddAssignmentToNotion(assignment, GetObjType(a.Type, db), GetObjCourse(a.CourseCode, db))
 
 	if err_notion != nil {
-		log.Fatalln(err_notion)
+		log.Fatalln("Error adding assignment to Notion: ", err_notion)
+		return err_notion
 	}
 
 	var lastVal int
@@ -177,13 +178,12 @@ func (a *Assignment) Add(db *sql.DB) (err error) {
 	}
 	err = crud.PutHanlder(lastVal, "notion_id", "assignements", notion_id, db)
 
-	if err == nil {
-		fmt.Printf("\nSucceful new Assignement ! %#v", notion_id)
-	} else {
-		fmt.Println("Error updating assignment")
+	if err != nil {
+		log.Fatalln("Error updating assignment: ", err)
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filter, up_to_date bool, db *sql.DB) {
@@ -201,7 +201,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 	query += " ORDER BY deadline ASC"
 	assignments, err := crud.GetHandler(query, db)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	if len(assignments) == 0 {
@@ -259,6 +259,10 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 		fmt.Print("│")
 		for _, col := range columns {
 			value := assignment[col]
+			if col == "deadline" {
+				value = value[:10]
+			}
+
 			// Truncate or pad to exactly 10 characters
 			if len(value) > 15 && len(columns) > 2 {
 				value = value[:12] + "..."
@@ -279,8 +283,15 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 func GetAssignmentsbyId(id string, db *sql.DB) *Assignment {
 
 	assignments, err := crud.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE id='%v'", id), db)
+
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+		return nil
+	}
+
+	if len(assignments) == 0 {
+		log.Fatal("Assignment not found")
+		return nil
 	}
 
 	return NewAssignmentFromMap(assignments[0])
@@ -288,40 +299,44 @@ func GetAssignmentsbyId(id string, db *sql.DB) *Assignment {
 
 func (a *Assignment) getID(db *sql.DB) int {
 
-	assignment, err := crud.GetHandler(fmt.Sprintf("SELECT id FROM assignements WHERE notion_id='%v'", a.NotionID), db)
+	query := fmt.Sprintf("SELECT id FROM assignements WHERE notion_id='%v'", a.NotionID)
+	assignment, err := crud.GetHandler(query, db)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Error getting assignment id: ", err)
+		return 0
 	}
 	id := assignment[0]["id"]
 
 	int_id, err := strconv.Atoi(id)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Error converting assignment id to int: ", err)
+		return 0
 	}
 	return int_id
 }
 
 func (a *Assignment) Update(col, value string, db *sql.DB) (err error) {
 
-	fmt.Println("Updating assignment in database")
-
 	err = crud.PutHanlder(a.getID(db), col, "assignements", value, db)
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error updating assignment in database: ", err)
 		return err
 	}
 
-	fmt.Println("Updating assignment to Notion")
+	assignment := a.ToMap()
+	assignment[col] = value
 
-	err = notion.UpdateAssignementToNotion(a.ToMap(), col, value)
+	if col == "course_code" {
+		value = GetObjCourse(value, db)["notion_id"]
+	}
+
+	err = notion.UpdateAssignementToNotion(assignment, col, value, GetObjType(assignment["type"], db))
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error updating assignment to Notion: ", err)
 		return err
 	}
-
-	fmt.Println("Successfully updated assignment")
 
 	return nil
 }

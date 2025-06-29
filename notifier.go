@@ -3,6 +3,7 @@ package main
 import (
 	"ACC-HOMEWORK/crud"
 	"fmt"
+	"log"
 	"math"
 	"os/exec"
 	"time"
@@ -114,6 +115,6 @@ func scheduleNotifications() error {
 func main() {
 	err := scheduleNotifications()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }

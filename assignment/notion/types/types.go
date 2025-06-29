@@ -135,6 +135,14 @@ type PropertiesWithRequiredDeadline struct {
 	Deadline Deadline `json:"Deadline"` // No omitempty here
 }
 
+type UpdateTypeRequest struct {
+	Properties PropertiesWithRequiredType `json:"properties,omitempty"`
+}
+
+type PropertiesWithRequiredType struct {
+	Type Type `json:"Type"` // No omitempty here
+}
+
 type UpdateDeadlineRequest struct {
 	Properties PropertiesWithRequiredDeadline `json:"properties,omitempty"`
 }
@@ -145,6 +153,14 @@ type PropertiesWithRequiredLink struct {
 
 type UpdateLinkRequest struct {
 	Properties PropertiesWithRequiredLink `json:"properties,omitempty"`
+}
+
+type PropertiesWithRequiredCourseCode struct {
+	Courses Courses `json:"Courses"` // No omitempty here
+}
+
+type UpdateCourseCodeRequest struct {
+	Properties PropertiesWithRequiredCourseCode `json:"properties,omitempty"`
 }
 
 type DeletionRequest struct {

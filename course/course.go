@@ -110,30 +110,32 @@ func (c *Course) Add(db *sql.DB) (err error) {
 	err = crud.PostHandler(course, "courses", db)
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error adding course to database: ", err)
+		return err
 	}
 
 	notion_id, err_notion := notion.AddCourseToNotion(course)
 
 	if err_notion != nil {
-		log.Fatalln(err_notion)
+		log.Fatalln("Error adding course to Notion: ", err_notion)
+		return err_notion
 	}
 
 	var lastVal int
 	err = db.QueryRow("SELECT MAX(id) FROM courses").Scan(&lastVal)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln("Error getting course id: ", err)
+		return err
 	}
-	fmt.Println(lastVal+1, notion_id)
+
 	err = crud.PutHanlder(lastVal+1, "notion_id", "courses", notion_id, db)
 
-	if err == nil {
-		fmt.Printf("\nSucceful new Course ! %#v", notion_id)
-	} else {
-		fmt.Println("Error updating assignment")
+	if err != nil {
+		log.Fatalln("Error updating course: ", err)
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func (c *Course) Update(col, value string, db *sql.DB) (err error) {
