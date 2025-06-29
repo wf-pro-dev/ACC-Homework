@@ -1,7 +1,6 @@
 package notion
 
 import (
-	"ACC-HOMEWORK/assignment/notion/types"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/williamfotso/acc/assignment/notion/types"
 )
 
 const BASE_URL = "https://api.notion.com/v1"

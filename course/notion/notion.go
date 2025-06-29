@@ -1,7 +1,6 @@
 package notion
 
 import (
-	"ACC-HOMEWORK/course/notion/types"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/williamfotso/acc/course/notion/types"
 )
 
 var NOTION_API_KEY = os.Getenv("NOTION_API_KEY")

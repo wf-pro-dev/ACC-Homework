@@ -1,8 +1,6 @@
 package assignment
 
 import (
-	"ACC-HOMEWORK/assignment/notion"
-	"ACC-HOMEWORK/crud"
 	"bufio"
 	"database/sql"
 	"fmt"
@@ -11,6 +9,9 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/williamfotso/acc/assignment/notion"
+	"github.com/williamfotso/acc/crud"
 )
 
 // Assignment represents a homework or exam assignment

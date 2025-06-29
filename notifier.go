@@ -1,12 +1,12 @@
 package main
 
 import (
-	"ACC-HOMEWORK/crud"
 	"fmt"
-	"log"
 	"math"
 	"os/exec"
 	"time"
+
+	"github.com/williamfotso/acc/crud"
 )
 
 func getUntilDeadline(deadline time.Time) string {
@@ -112,9 +112,9 @@ func scheduleNotifications() error {
 	return nil
 }
 
-func main() {
-	err := scheduleNotifications()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+// func main() {
+// 	err := scheduleNotifications()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// }

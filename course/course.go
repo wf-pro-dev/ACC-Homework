@@ -1,13 +1,14 @@
 package course
 
 import (
-	"ACC-HOMEWORK/course/notion"
-	"ACC-HOMEWORK/crud"
 	"bufio"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/williamfotso/acc/course/notion"
+	"github.com/williamfotso/acc/crud"
 )
 
 type Course struct {
