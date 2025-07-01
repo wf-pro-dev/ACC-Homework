@@ -15,11 +15,14 @@ import (
 
 const BASE_URL = "https://api.notion.com/v1"
 
-func sendRequest(req interface{}, method, url, notion_id string) (respBody []byte, err error) {
+func sendRequest(req interface{}, method, url string) (respBody []byte, err error) {
 
-	jsonData, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	var jsonData []byte
+	if req != nil {
+		jsonData, err = json.Marshal(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request: %w", err)
+		}
 	}
 
 	client := &http.Client{
@@ -29,14 +32,15 @@ func sendRequest(req interface{}, method, url, notion_id string) (respBody []byt
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	var final_url string
-	if notion_id != "" {
-		final_url = fmt.Sprintf("%s/%s/%s", BASE_URL, url, notion_id)
-	} else {
-		final_url = fmt.Sprintf("%s/%s", BASE_URL, url)
-	}
+	final_url := fmt.Sprintf("%s/%s", BASE_URL, url)
 
-	httpReq, err := http.NewRequestWithContext(ctx, method, final_url, bytes.NewBuffer(jsonData))
+	var httpReq *http.Request
+
+	httpReq, err = http.NewRequestWithContext(ctx, method, final_url, bytes.NewBuffer(jsonData))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
 
 	// Set headers
 	httpReq.Header.Set("Authorization", "Bearer "+os.Getenv("NOTION_API_KEY"))
@@ -153,7 +157,7 @@ func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (st
 	assignment_name_obj.Title = []types.RichText{titleText}
 	req.Properties.AssignmentName = assignment_name_obj
 
-	resp, err := sendRequest(req, "POST", "pages", "")
+	resp, err := sendRequest(req, "POST", "pages")
 	if err != nil {
 		return "", err
 	}
@@ -295,7 +299,9 @@ func UpdateAssignementToNotion(assign map[string]string, col string, value strin
 		return fmt.Errorf("invalid column type: %s", col)
 	}
 
-	_, err = sendRequest(req, "PATCH", "pages", assign["notion_id"])
+	url := fmt.Sprintf("%s/%s", BASE_URL, assign["notion_id"])
+
+	_, err = sendRequest(req, "PATCH", url)
 
 	return err
 }
@@ -305,7 +311,18 @@ func DeleteAssignementFromNotion(assign map[string]string) (err error) {
 	req := types.DeletionRequest{}
 	req.Archived = true
 
-	_, err = sendRequest(req, "PATCH", "pages", assign["notion_id"])
+	_, err = sendRequest(req, "PATCH", assign["notion_id"])
 
 	return err
+}
+
+func GetPageProperties(notion_id, property_id string) (respBody []byte, err error) {
+
+	url := fmt.Sprintf("pages/%s/properties/%s", notion_id, property_id)
+	respBody, err = sendRequest(nil, "GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	return respBody, nil
 }

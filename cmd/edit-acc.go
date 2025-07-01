@@ -10,38 +10,6 @@ import (
 	"github.com/williamfotso/acc/crud"
 )
 
-// func showUsage() {
-// 	fmt.Println("Usage: edit-acc <ASSIGNMENT_ID> <COLUMN> <NEW_VALUE>")
-// 	fmt.Println("")
-// 	fmt.Println("Edit an existing assignment in the ACC Homework tracker.")
-// 	fmt.Println("")
-// 	fmt.Println("Arguments:")
-// 	fmt.Println("  ASSIGNMENT_ID    The ID of the assignment to edit")
-// 	fmt.Println("  COLUMN           The column/field to update")
-// 	fmt.Println("  NEW_VALUE        The new value for the specified column")
-// 	fmt.Println("")
-// 	fmt.Println("Available columns:")
-// 	fmt.Println("  title            Assignment title")
-// 	fmt.Println("  todo             Assignment todo/description")
-// 	fmt.Println("  deadline         Due date (format: yyyy-mm-dd)")
-// 	fmt.Println("  type             Assignment type (HW, Exam, etc.)")
-// 	fmt.Println("  course_code      Course code")
-// 	fmt.Println("  link             Assignment link/URL")
-// 	fmt.Println("")
-// 	fmt.Println("Options:")
-// 	fmt.Println("  -h, --help       Show this help message")
-// 	fmt.Println("")
-// 	fmt.Println("Examples:")
-// 	fmt.Println("  edit-acc 5 title \"New Assignment Title\"")
-// 	fmt.Println("  edit-acc 3 deadline 2024-12-15")
-// 	fmt.Println("  edit-acc 1 todo \"Complete the final project\"")
-// 	fmt.Println("  edit-acc 2 type HW")
-// 	fmt.Println("  edit-acc 4 link \"https://example.com/assignment\"")
-// 	fmt.Println("  edit-acc -h      # Show this help message")
-// 	fmt.Println("")
-// 	fmt.Println("Note: The assignment ID can be found using the ls-acc command.")
-// }
-
 func ValidateColumn(col string) error {
 	for _, columns := range types.COLUMNS {
 		if columns[0:2] == col || columns == col {

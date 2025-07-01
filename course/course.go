@@ -84,6 +84,23 @@ func (c *Course) GetDuration() string {
 	return c.Duration
 }
 
+func GetCoursebyNotionID(notion_id string, db *sql.DB) *Course {
+
+	query := fmt.Sprintf("SELECT * FROM courses WHERE notion_id='%v'", notion_id)
+	course, err := crud.GetHandler(query, db)
+	if err != nil {
+		log.Fatalln("Error getting course id: ", err)
+		return nil
+	}
+
+	if len(course) == 0 {
+		log.Fatalln("Course not found")
+		return nil
+	}
+
+	return NewCourseFromMap(course[0])
+}
+
 func NewCourseFromMap(_course map[string]string) *Course {
 	course := &Course{}
 	course.NotionID = _course["notion_id"]

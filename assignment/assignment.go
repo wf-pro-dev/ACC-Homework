@@ -298,7 +298,24 @@ func GetAssignmentsbyId(id string, db *sql.DB) *Assignment {
 	return NewAssignmentFromMap(assignments[0])
 }
 
-func (a *Assignment) getID(db *sql.DB) int {
+func GetAssignmentsbyNotionID(notion_id string, db *sql.DB) *Assignment {
+
+	assignments, err := crud.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE notion_id='%v'", notion_id), db)
+
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+
+	if len(assignments) == 0 {
+		log.Fatal("Assignment not found")
+		return nil
+	}
+
+	return NewAssignmentFromMap(assignments[0])
+}
+
+func (a *Assignment) GetID(db *sql.DB) int {
 
 	query := fmt.Sprintf("SELECT id FROM assignements WHERE notion_id='%v'", a.NotionID)
 	assignment, err := crud.GetHandler(query, db)
@@ -318,7 +335,7 @@ func (a *Assignment) getID(db *sql.DB) int {
 
 func (a *Assignment) Update(col, value string, db *sql.DB) (err error) {
 
-	err = crud.PutHanlder(a.getID(db), col, "assignements", value, db)
+	err = crud.PutHanlder(a.GetID(db), col, "assignements", value, db)
 
 	if err != nil {
 		log.Fatalln("Error updating assignment in database: ", err)

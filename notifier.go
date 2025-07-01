@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os/exec"
 	"time"
@@ -25,9 +26,35 @@ func getUntilDeadline(deadline time.Time) string {
 		return "Tomorrow"
 	}
 
-	daysRemaining := int(math.Ceil(time.Until(deadline).Hours() / 24))
-	return fmt.Sprintf("%d days remaining", daysRemaining)
+	if deadline.Equal(today.AddDate(0, 0, 7)) {
+		return "in a week"
+	}
 
+	daysRemaining := int(math.Ceil(deadline.Sub(today).Hours() / 24))
+	return fmt.Sprintf("in %d days", daysRemaining)
+}
+
+func useNotifier(args []string) error {
+	// Find terminal-notifier in common locations
+	locations := []string{
+		"/usr/local/bin/terminal-notifier",                         // Homebrew default
+		"/opt/homebrew/bin/terminal-notifier",                      // Apple Silicon Homebrew
+		"./terminal-notifier.app/Contents/MacOS/terminal-notifier", // Local copy
+	}
+
+	var cmd *exec.Cmd
+	var err error
+	// Try different locations until we find the binary
+	for _, path := range locations {
+		cmd = exec.Command(path, "-group", "ACC", "-remove", "ACC")
+		cmd = exec.Command(path, args...)
+		err = cmd.Run()
+		if err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("failed to send notification: %w", err)
 }
 
 // sendNotification sends a clickable notification that opens a URL when clicked
@@ -46,6 +73,7 @@ func sendNotification(assign map[string]string) error {
 
 	// Build the terminal-notifier command
 	args := []string{
+		"-group", assign["notion_id"],
 		"-title", title,
 		"-subtitle", subtitle,
 		"-message", assign["todo"],
@@ -58,27 +86,15 @@ func sendNotification(assign map[string]string) error {
 		args = append(args, "-open", link)
 	}
 
-	// Find terminal-notifier in common locations
-	locations := []string{
-		"/usr/local/bin/terminal-notifier",                         // Homebrew default
-		"/opt/homebrew/bin/terminal-notifier",                      // Apple Silicon Homebrew
-		"./terminal-notifier.app/Contents/MacOS/terminal-notifier", // Local copy
+	// Remove the notification if it already exists
+	args = append(args, "-remove", assign["notion_id"])
+
+	err = useNotifier(args)
+	if err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
 	}
 
-	var cmd *exec.Cmd
-	var lastError error
-
-	// Try different locations until we find the binary
-	for _, path := range locations {
-		cmd = exec.Command(path, args...)
-		if err := cmd.Run(); err == nil {
-			return nil // Success!
-		} else {
-			lastError = err
-		}
-	}
-
-	return fmt.Errorf("failed to send notification (tried paths: %v): %w", locations, lastError)
+	return nil
 }
 
 // scheduleNotifications checks for upcoming assignments and notifies
@@ -112,9 +128,9 @@ func scheduleNotifications() error {
 	return nil
 }
 
-// func main() {
-// 	err := scheduleNotifications()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// }
+func main() {
+	err := scheduleNotifications()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
