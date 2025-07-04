@@ -24,6 +24,7 @@ type Assignment struct {
 	Todo       string
 	CourseCode string `db:"course_code,omitempty"`
 	Link       string
+	Status     string
 }
 
 type Filter struct {
@@ -74,7 +75,7 @@ func NewAssignmentFromMap(assign map[string]string) *Assignment {
 	assignment.Title = assign["title"]
 	assignment.Todo = assign["todo"]
 	assignment.CourseCode = assign["course_code"]
-
+	assignment.Status = assign["status"]
 	return assignment
 }
 
@@ -91,7 +92,7 @@ func (a *Assignment) SetCourseCode(courseCode string) {
 	a.CourseCode = courseCode
 }
 
-func (a *Assignment) GetType(db *sql.DB) string {
+func (a *Assignment) GetType() string {
 	return a.Type
 }
 
@@ -136,6 +137,28 @@ func GetObjType(type_name string, db *sql.DB) map[string]string {
 	return type_info[0]
 }
 
+func GetObjStatus(status_name string, db *sql.DB) map[string]string {
+
+	var name string
+
+	switch status_name {
+	case "default":
+		name = "Not started"
+	case "start":
+		name = "In progress"
+	case "done":
+		name = "Done"
+
+	}
+
+	query := fmt.Sprintf("SELECT * FROM status WHERE name='%v'", name)
+	status_info, err := crud.GetHandler(query, db)
+	if err != nil {
+		log.Fatal("Error getting status object: ", err)
+	}
+	return status_info[0]
+}
+
 // ToMap converts the Assignment struct to a map[string]string
 // This maintains compatibility with the existing database operations
 func (a *Assignment) ToMap() map[string]string {
@@ -149,6 +172,7 @@ func (a *Assignment) ToMap() map[string]string {
 		"todo":        a.Todo,
 		"course_code": a.CourseCode,
 		"link":        a.Link,
+		"status":      a.Status,
 	}
 }
 
@@ -229,6 +253,8 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 			headers[i] = "Course Code"
 		case "notion_id":
 			headers[i] = "Notion ID"
+		case "status":
+			headers[i] = "Status"
 		default:
 			headers[i] = col
 		}
@@ -349,7 +375,15 @@ func (a *Assignment) Update(col, value string, db *sql.DB) (err error) {
 		value = GetObjCourse(value, db)["notion_id"]
 	}
 
-	err = notion.UpdateAssignementToNotion(assignment, col, value, GetObjType(assignment["type"], db))
+	var obj map[string]string
+
+	if col == "status" {
+		obj = GetObjStatus(assignment["status"], db)
+	} else {
+		obj = GetObjType(assignment["type"], db)
+	}
+
+	err = notion.UpdateAssignementToNotion(assignment, col, value, obj)
 
 	if err != nil {
 		log.Fatalln("Error updating assignment to Notion: ", err)

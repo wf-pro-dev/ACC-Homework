@@ -7,12 +7,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/assignment"
 	"github.com/williamfotso/acc/assignment/notion/types"
+	"github.com/williamfotso/acc/cmd/completion"
 	"github.com/williamfotso/acc/crud"
 )
 
 func ValidateColumn(col string) error {
-	for _, columns := range types.COLUMNS {
-		if columns[0:2] == col || columns == col {
+
+	for _, column := range types.COLUMNS {
+		if column[0:2] == col || column == col {
 			return nil
 		}
 	}
@@ -24,9 +26,10 @@ func init() {
 }
 
 var editCmd = &cobra.Command{
-	Use:   "edit",
-	Short: "Edit an existing assignment in the ACC Homework tracker.",
-	Long:  `Edit an existing assignment in the ACC Homework tracker.`,
+	Use:               "edit",
+	Short:             "Edit an existing assignment in the ACC Homework tracker.",
+	Long:              `Edit an existing assignment in the ACC Homework tracker.`,
+	ValidArgsFunction: completion.EditCompletion,
 	Args: func(cmd *cobra.Command, args []string) error {
 
 		db, DBerr := crud.GetDB()

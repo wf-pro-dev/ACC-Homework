@@ -100,6 +100,7 @@ type Properties struct {
 	Courses        Courses        `json:"Courses"`
 	Type           Type           `json:"Type"`
 	Status         Status         `json:"Status"`
+	Link           Link           `json:"Link"`
 }
 
 type PageRequest struct {
@@ -163,6 +164,14 @@ type UpdateCourseCodeRequest struct {
 	Properties PropertiesWithRequiredCourseCode `json:"properties,omitempty"`
 }
 
+type PropertiesWithRequiredStatus struct {
+	Status Status `json:"Status"` // No omitempty here
+}
+
+type UpdateStatusRequest struct {
+	Properties PropertiesWithRequiredStatus `json:"properties,omitempty"`
+}
+
 type DeletionRequest struct {
 	Archived bool `json:"archived,omitempty"`
 }
@@ -177,9 +186,10 @@ var COLUMNS = map[string]string{
 	"%5DJfC":    "todo",
 	"notion_id": "notion_id",
 	"jgPD":      "link",
+	"%5Bm%5Cs":  "status",
 }
 
-var DEFAULT_COLUMNS_FOR_LS = []string{"id", "type", "course_code", "title", "deadline", "todo"}
+var DEFAULT_COLUMNS_FOR_LS = []string{"id", "type", "course_code", "title", "deadline", "todo", "status"}
 
 func GetColumnFromPropertyId(property_id string) (column string, err error) {
 

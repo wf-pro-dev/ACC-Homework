@@ -148,7 +148,7 @@ func PostHandler(newItem map[string]string, table string, db *sql.DB) error {
 	// Test if there is data to insert
 	if len(newItem) > 0 {
 
-		query := fmt.Sprintf("INSERT into %v (%v) VALUES (%v)", table, colomnsStr, valuesStr)
+		query := fmt.Sprintf("INSERT into %v (%v) VALUES (%v) ON CONFLICT (notion_id) DO NOTHING", table, colomnsStr, valuesStr)
 
 		// Excution of the INSERT query
 		_, err := db.Query(query)

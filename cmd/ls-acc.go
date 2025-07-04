@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/assignment"
 	"github.com/williamfotso/acc/assignment/notion/types"
+	"github.com/williamfotso/acc/cmd/completion"
 	"github.com/williamfotso/acc/crud"
 )
 
@@ -76,12 +77,26 @@ var include []string
 var exclude []string
 
 func init() {
-
+	// Handle --course -c flag
 	lsCmd.Flags().StringVarP(&courseName, "course", "c", "", "Course to list assignments for")
+	_ = lsCmd.RegisterFlagCompletionFunc("course", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return completion.CourseCodeCompletion()
+	})
+
 	lsCmd.Flags().BoolP("up-to-date", "d", false, "List only assignments that are up to date")
+
+	// Handle --filter -f flag
 	lsCmd.Flags().StringVarP(&filter, "filter", "f", "", "Filter assignments by a specific column and value")
+	_ = lsCmd.RegisterFlagCompletionFunc("filter", completion.CompleteFilterFlag)
+
+	// Handle --include -i flag
 	lsCmd.Flags().StringArrayVarP(&include, "include", "i", []string{}, "Include columns to display")
+	_ = lsCmd.RegisterFlagCompletionFunc("include", completion.CompleteMultiColumn)
+
+	// Handle --exclude -e flag
 	lsCmd.Flags().StringArrayVarP(&exclude, "exclude", "e", []string{}, "Exclude columns to display")
+	_ = lsCmd.RegisterFlagCompletionFunc("exclude", completion.CompleteMultiColumn)
+
 	rootCmd.AddCommand(lsCmd)
 }
 

@@ -1,8 +1,7 @@
-package main
+package notifier
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"os/exec"
 	"time"
@@ -34,7 +33,7 @@ func getUntilDeadline(deadline time.Time) string {
 	return fmt.Sprintf("in %d days", daysRemaining)
 }
 
-func useNotifier(args []string) error {
+func UseNotifier(args []string) error {
 	// Find terminal-notifier in common locations
 	locations := []string{
 		"/usr/local/bin/terminal-notifier",                         // Homebrew default
@@ -78,7 +77,7 @@ func sendNotification(assign map[string]string) error {
 		"-subtitle", subtitle,
 		"-message", assign["todo"],
 		"-sound", "Frog",
-		"-timeout", "30", // Notification stays for 30 seconds
+		"-timeout", "10", // Notification stays for 30 seconds
 	}
 
 	// Add click action if URL exists
@@ -87,18 +86,24 @@ func sendNotification(assign map[string]string) error {
 	}
 
 	// Remove the notification if it already exists
-	args = append(args, "-remove", assign["notion_id"])
-
-	err = useNotifier(args)
+	err = UseNotifier([]string{"-remove", assign["notion_id"]})
 	if err != nil {
-		return fmt.Errorf("failed to send notification: %w", err)
+		return fmt.Errorf("failed to remove notification: %w", err)
+	}
+
+	// Send notification if the assignment is not done
+	if assign["status"] != "done" {
+		err = UseNotifier(args)
+		if err != nil {
+			return fmt.Errorf("failed to send notification: %w", err)
+		}
 	}
 
 	return nil
 }
 
 // scheduleNotifications checks for upcoming assignments and notifies
-func scheduleNotifications() error {
+func ScheduleNotifications() error {
 	db, err := crud.GetDB()
 	if err != nil {
 		return fmt.Errorf("database error: %w", err)
@@ -126,11 +131,4 @@ func scheduleNotifications() error {
 	}
 
 	return nil
-}
-
-func main() {
-	err := scheduleNotifications()
-	if err != nil {
-		log.Fatal(err)
-	}
 }

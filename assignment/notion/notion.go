@@ -175,7 +175,7 @@ func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (st
 	return notionResp.ID, nil
 }
 
-func UpdateAssignementToNotion(assign map[string]string, col string, value string, type_info map[string]string) (err error) {
+func UpdateAssignementToNotion(assign map[string]string, col string, value string, obj map[string]string) (err error) {
 	var req interface{}
 
 	switch col {
@@ -288,10 +288,27 @@ func UpdateAssignementToNotion(assign map[string]string, col string, value strin
 		typeReq.Properties.Type = types.Type{
 			ID:     "S~Ce",
 			Type:   "select",
-			Select: type_info,
+			Select: obj,
 		}
 
 		req = typeReq
+
+	case "status":
+
+		var statusObj types.StatusObject
+		statusObj.ID = obj["id"]
+		statusObj.Name = obj["name"]
+		statusObj.Color = obj["color"]
+
+		statusReq := types.UpdateStatusRequest{}
+		statusReq.Properties = types.PropertiesWithRequiredStatus{}
+		statusReq.Properties.Status = types.Status{
+			ID:     "%5Bm%5Cs",
+			Type:   "status",
+			Status: &statusObj,
+		}
+
+		req = statusReq
 
 	}
 
@@ -299,7 +316,7 @@ func UpdateAssignementToNotion(assign map[string]string, col string, value strin
 		return fmt.Errorf("invalid column type: %s", col)
 	}
 
-	url := fmt.Sprintf("%s/%s", BASE_URL, assign["notion_id"])
+	url := fmt.Sprintf("pages/%s", assign["notion_id"])
 
 	_, err = sendRequest(req, "PATCH", url)
 
@@ -314,6 +331,17 @@ func DeleteAssignementFromNotion(assign map[string]string) (err error) {
 	_, err = sendRequest(req, "PATCH", assign["notion_id"])
 
 	return err
+}
+
+func GetPage(page_id string) (respBody []byte, err error) {
+
+	url := fmt.Sprintf("pages/%s", page_id)
+	respBody, err = sendRequest(nil, "GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	return respBody, nil
 }
 
 func GetPageProperties(notion_id, property_id string) (respBody []byte, err error) {
