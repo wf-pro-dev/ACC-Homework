@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 func getUntilDeadline(deadline time.Time) string {
@@ -104,7 +104,7 @@ func sendNotification(assign map[string]string) error {
 
 // scheduleNotifications checks for upcoming assignments and notifies
 func ScheduleNotifications() error {
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		return fmt.Errorf("database error: %w", err)
 	}
@@ -117,7 +117,7 @@ func ScheduleNotifications() error {
 		now.AddDate(0, 0, 7).Format(time.DateOnly),
 	)
 
-	assignments, err := crud.GetHandler(query, db)
+	assignments, err := database.GetHandler(query, db)
 
 	if err != nil {
 		return fmt.Errorf("query error: %w", err)

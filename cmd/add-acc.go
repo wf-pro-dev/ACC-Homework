@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/assignment"
 	"github.com/williamfotso/acc/course"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 var assignment_flag bool
@@ -24,7 +24,7 @@ var addCmd = &cobra.Command{
 	Long:  `Add a new assignment or course to the ACC Homework tracker.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		db, err := crud.GetDB()
+		db, err := database.GetDB()
 		if err != nil {
 			log.Fatal(err)
 		}

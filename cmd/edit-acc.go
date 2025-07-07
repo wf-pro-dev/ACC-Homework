@@ -8,7 +8,7 @@ import (
 	"github.com/williamfotso/acc/assignment"
 	"github.com/williamfotso/acc/assignment/notion/types"
 	"github.com/williamfotso/acc/cmd/completion"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 func ValidateColumn(col string) error {
@@ -32,7 +32,7 @@ var editCmd = &cobra.Command{
 	ValidArgsFunction: completion.EditCompletion,
 	Args: func(cmd *cobra.Command, args []string) error {
 
-		db, DBerr := crud.GetDB()
+		db, DBerr := database.GetDB()
 		if DBerr != nil {
 			return DBerr
 		}
@@ -55,7 +55,7 @@ var editCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 
-		db, err := crud.GetDB()
+		db, err := database.GetDB()
 		if err != nil {
 			log.Fatal(err)
 		}

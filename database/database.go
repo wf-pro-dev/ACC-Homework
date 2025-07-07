@@ -1,4 +1,4 @@
-package crud
+package database
 
 import (
 	"database/sql"
@@ -9,16 +9,23 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
+	"github.com/spf13/viper"
 )
 
 func GetDB() (*sql.DB, error) {
-	const (
-		host     = "localhost"
-		port     = 5432
-		user     = "williamfotso"
-		password = "076ifDf9f5ovd8zn4zrO8S5RS0CaT9u2"
-		dbname   = "notion_homework"
-	)
+
+	viper.SetConfigFile(".env")
+	err := viper.ReadInConfig()
+
+	if err != nil {
+		return nil, fmt.Errorf("error reading config file: %w", err)
+	}
+
+	host := viper.GetString("DB_HOST")
+	port := viper.GetInt("DB_PORT")
+	user := viper.GetString("DB_USER")
+	password := viper.GetString("DB_PASSWORD")
+	dbname := viper.GetString("DB_NAME")
 
 	// Info Formatting
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+

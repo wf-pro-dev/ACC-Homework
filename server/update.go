@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 	"github.com/williamfotso/acc/assignment/notion"
 	"github.com/williamfotso/acc/assignment/notion/types"
 	"github.com/williamfotso/acc/course"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 	"github.com/williamfotso/acc/notifier"
 )
 
@@ -20,7 +21,7 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 	page_id := payload.Entity.Id
 
 	// 5. Get the database
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error getting database: %s", err))
 		return
@@ -49,99 +50,7 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		}
 
 		// 9. Get the new value from the property
-		var value string
-		switch column {
-
-		case "course_code":
-			var coursesType struct {
-				Courses []struct {
-					Relation struct {
-						ID string `json:"id"`
-					} `json:"relation"`
-				} `json:"results"`
-			}
-			json.Unmarshal(property, &coursesType)
-			if len(coursesType.Courses) > 0 {
-
-				course := course.GetCoursebyNotionID(coursesType.Courses[0].Relation.ID, db)
-				if course == nil {
-					PrintERROR(w, http.StatusInternalServerError,
-						fmt.Sprintf("Error getting course: %s", err))
-					return
-				}
-
-				value = course.Code
-
-			} else {
-				value = ""
-			}
-
-		case "deadline":
-			var dateType struct {
-				Date struct {
-					Start string `json:"start"`
-				} `json:"date"`
-			}
-
-			json.Unmarshal(property, &dateType)
-			value = dateType.Date.Start
-
-		case "link":
-			var linkType struct {
-				URL string `json:"url"`
-			}
-			json.Unmarshal(property, &linkType)
-			value = linkType.URL
-
-		case "todo":
-			var todoType struct {
-				Results []struct {
-					RichText struct {
-						PlainText string `json:"plain_text"`
-					} `json:"rich_text"`
-				} `json:"results"`
-			}
-
-			json.Unmarshal(property, &todoType)
-			value = todoType.Results[0].RichText.PlainText
-
-		case "title":
-			var titleType struct {
-				Results []struct {
-					Title struct {
-						PlainText string `json:"plain_text"`
-					} `json:"title"`
-				} `json:"results"`
-			}
-			json.Unmarshal(property, &titleType)
-			value = titleType.Results[0].Title.PlainText
-
-		case "type":
-
-			var selectType struct {
-				Select map[string]string `json:"select"`
-			}
-
-			json.Unmarshal(property, &selectType)
-			value = selectType.Select["name"]
-
-		case "status":
-			var statusType struct {
-				Status struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"status"`
-			}
-			json.Unmarshal(property, &statusType)
-			switch statusType.Status.Name {
-			case "Done":
-				value = "done"
-			case "In progress":
-				value = "start"
-			default:
-				value = "default"
-			}
-		}
+		value := GetValue(w, property, column, db)
 
 		// Log the update
 		PrintLog(fmt.Sprintf("page_id %s property_id %s column %s value %s",
@@ -155,7 +64,7 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 					fmt.Sprintf("Error getting assignment: %s", err))
 			}
 
-			err = crud.PutHanlder(assignment.GetID(db), column, "assignements", value, db)
+			err = database.PutHanlder(assignment.GetID(db), column, "assignements", value, db)
 			if err != nil {
 				PrintERROR(w, http.StatusInternalServerError,
 					fmt.Sprintf("Error updating assignment in database: %s", err))
@@ -180,7 +89,7 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 				PrintERROR(w, http.StatusInternalServerError,
 					fmt.Sprintf("Error sending notification: %s", err))
 			}
-			time.Sleep(5 * time.Second) // Wait for the notification to be sent
+			time.Sleep(10 * time.Second) // Wait for the notification to be sent
 
 			err = notifier.UseNotifier([]string{"-remove", notification_id})
 			if err != nil {
@@ -191,4 +100,104 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 	}
 
 	fmt.Print("\n\n")
+}
+
+func GetValue(w http.ResponseWriter, property []byte, column string, db *sql.DB) string {
+	var value string
+	switch column {
+
+	case "course_code":
+		var coursesType struct {
+			Courses []struct {
+				Relation struct {
+					ID string `json:"id"`
+				} `json:"relation"`
+			} `json:"results"`
+		}
+		json.Unmarshal(property, &coursesType)
+
+		if len(coursesType.Courses) > 0 {
+			course := course.GetCoursebyNotionID(coursesType.Courses[0].Relation.ID, db)
+
+			if course == nil {
+				value = ""
+				err := fmt.Errorf("course not found")
+				PrintERROR(w, http.StatusInternalServerError,
+					fmt.Sprintf("Error getting course: %s", err))
+			} else {
+				value = course.Code
+			}
+		}
+
+	case "deadline":
+		var dateType struct {
+			Date struct {
+				Start string `json:"start"`
+			} `json:"date"`
+		}
+
+		json.Unmarshal(property, &dateType)
+		value = dateType.Date.Start
+
+	case "link":
+		var linkType struct {
+			URL string `json:"url"`
+		}
+		json.Unmarshal(property, &linkType)
+		value = linkType.URL
+
+	case "todo":
+		var todoType struct {
+			Results []struct {
+				RichText struct {
+					PlainText string `json:"plain_text"`
+				} `json:"rich_text"`
+			} `json:"results"`
+		}
+
+		json.Unmarshal(property, &todoType)
+		value = todoType.Results[0].RichText.PlainText
+
+	case "title":
+		var titleType struct {
+			Results []struct {
+				Title struct {
+					PlainText string `json:"plain_text"`
+				} `json:"title"`
+			} `json:"results"`
+		}
+		json.Unmarshal(property, &titleType)
+		value = titleType.Results[0].Title.PlainText
+
+	case "type":
+
+		var selectType struct {
+			Select map[string]string `json:"select"`
+		}
+
+		json.Unmarshal(property, &selectType)
+		value = selectType.Select["name"]
+
+	case "status":
+		var statusType struct {
+			Status struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"status"`
+		}
+		json.Unmarshal(property, &statusType)
+		switch statusType.Status.Name {
+		case "Done":
+			value = "done"
+		case "In progress":
+			value = "start"
+		default:
+			value = "default"
+		}
+	default:
+		value = ""
+	}
+
+	return value
+
 }

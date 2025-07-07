@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/assignment"
 	"github.com/williamfotso/acc/assignment/notion/types"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
@@ -32,7 +32,7 @@ func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
 
 func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirective) {
 
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -69,7 +69,7 @@ func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirectiv
 }
 
 func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		fmt.Println("[ERROR] DB connection error:", err)
 		return nil, cobra.ShellCompDirectiveError
@@ -85,7 +85,7 @@ func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 
 		baseName := filepath.Base(wd)
 		query := fmt.Sprintf("SELECT id, title FROM assignements WHERE course_code = '%s' ORDER BY id ASC", baseName)
-		assignments, err := crud.GetHandler(query, db)
+		assignments, err := database.GetHandler(query, db)
 		if err != nil {
 			fmt.Println("[ERROR] Query error:", err)
 			return nil, cobra.ShellCompDirectiveError

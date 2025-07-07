@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 	"github.com/williamfotso/acc/notifier"
 )
 
 func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload NotionWebhookPayload) {
 
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error getting database: %s", err))
@@ -27,14 +27,14 @@ func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		return
 	}
 
-	err = crud.DeleteHandler("assignements", "notion_id", payload.Entity.Id, db)
+	err = database.DeleteHandler("assignements", "notion_id", payload.Entity.Id, db)
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error deleting assignment: %s", err))
 		return
 	}
 
-	notification_id := assignment.NotionID
+	notification_id := fmt.Sprintf("%s-deleted", assignment.NotionID)
 	title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
 	subtitle := fmt.Sprintf("Deleted at %s", time.Now().Format(time.Stamp))
 	message := "Assignment deleted"
@@ -52,6 +52,14 @@ func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload Notion
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error sending notification: %s", err))
+	}
+
+	time.Sleep(10 * time.Second) // Wait for the notification to be sent
+
+	err = notifier.UseNotifier([]string{"-remove", notification_id})
+	if err != nil {
+		PrintERROR(w, http.StatusInternalServerError,
+			fmt.Sprintf("Error removing notification: %s", err))
 	}
 
 	PrintLog(fmt.Sprintf("Assignment deleted: %s %s", payload.Entity.Id, assignment.Title))

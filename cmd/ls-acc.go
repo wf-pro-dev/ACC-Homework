@@ -12,7 +12,7 @@ import (
 	"github.com/williamfotso/acc/assignment"
 	"github.com/williamfotso/acc/assignment/notion/types"
 	"github.com/williamfotso/acc/cmd/completion"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 // splitCommaSeparated splits a string by commas and trims whitespace
@@ -107,13 +107,13 @@ var lsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Get database connection
-		db, err := crud.GetDB()
+		db, err := database.GetDB()
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		// Get the courses codes from the database
-		COURSES_CODES, err := crud.GetHandler("SELECT code FROM courses", db)
+		COURSES_CODES, err := database.GetHandler("SELECT code FROM courses", db)
 		if err != nil {
 			log.Fatal(err)
 		}

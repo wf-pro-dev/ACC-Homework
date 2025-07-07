@@ -5,18 +5,18 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/assignment/notion/types"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		fmt.Println("DEBUG: DB error:", err)
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	courses, err := crud.GetHandler("SELECT code,name FROM courses", db)
+	courses, err := database.GetHandler("SELECT code,name FROM courses", db)
 	if err != nil {
 		fmt.Println("DEBUG: Query error:", err)
 		return nil, cobra.ShellCompDirectiveError

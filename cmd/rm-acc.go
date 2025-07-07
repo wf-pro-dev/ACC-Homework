@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 func init() {
@@ -18,7 +18,7 @@ var rmCmd = &cobra.Command{
 	Short: "Remove an assignment from the ACC Homework tracker.",
 	Long:  `Remove an assignment from the ACC Homework tracker.`,
 	Args: func(cmd *cobra.Command, args []string) error {
-		db, err := crud.GetDB()
+		db, err := database.GetDB()
 		if err != nil {
 			return fmt.Errorf("error getting database: %s", err)
 		}
@@ -32,7 +32,7 @@ var rmCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		db, err := crud.GetDB()
+		db, err := database.GetDB()
 		if err != nil {
 			log.Fatalln("Error getting database: ", err)
 		}

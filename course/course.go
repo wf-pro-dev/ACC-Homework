@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/williamfotso/acc/course/notion"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 )
 
 type Course struct {
@@ -87,7 +87,7 @@ func (c *Course) GetDuration() string {
 func GetCoursebyNotionID(notion_id string, db *sql.DB) *Course {
 
 	query := fmt.Sprintf("SELECT * FROM courses WHERE notion_id='%v'", notion_id)
-	course, err := crud.GetHandler(query, db)
+	course, err := database.GetHandler(query, db)
 	if err != nil {
 		log.Fatalln("Error getting course id: ", err)
 		return nil
@@ -125,7 +125,7 @@ func (c *Course) Add(db *sql.DB) (err error) {
 
 	course := c.ToMap()
 
-	err = crud.PostHandler(course, "courses", db)
+	err = database.PostHandler(course, "courses", db)
 
 	if err != nil {
 		log.Fatalln("Error adding course to database: ", err)
@@ -146,7 +146,7 @@ func (c *Course) Add(db *sql.DB) (err error) {
 		return err
 	}
 
-	err = crud.PutHanlder(lastVal+1, "notion_id", "courses", notion_id, db)
+	err = database.PutHanlder(lastVal+1, "notion_id", "courses", notion_id, db)
 
 	if err != nil {
 		log.Fatalln("Error updating course: ", err)

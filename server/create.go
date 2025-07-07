@@ -9,7 +9,7 @@ import (
 	"github.com/williamfotso/acc/assignment/notion"
 	"github.com/williamfotso/acc/assignment/notion/types"
 	"github.com/williamfotso/acc/course"
-	"github.com/williamfotso/acc/crud"
+	"github.com/williamfotso/acc/database"
 	"github.com/williamfotso/acc/notifier"
 )
 
@@ -33,7 +33,7 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		return
 	}
 
-	db, err := crud.GetDB()
+	db, err := database.GetDB()
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error getting database: %s", err))
@@ -64,14 +64,14 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		assignment["status"] = "default"
 	}
 
-	err = crud.PostHandler(assignment, "assignements", db)
+	err = database.PostHandler(assignment, "assignements", db)
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error creating assignment: %s", err))
 		return
 	}
 
-	notification_id := assignment["notion_id"]
+	notification_id := fmt.Sprintf("%s-created", assignment["notion_id"])
 	title := fmt.Sprintf("%s: %s", assignment["course_code"], assignment["title"])
 	subtitle := fmt.Sprintf("Created at %s", time.Now().Format(time.Stamp))
 	message := "New assignment created"
@@ -90,7 +90,8 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error sending notification: %s", err))
 	}
-	time.Sleep(5 * time.Second) // Wait for the notification to be sent
+
+	time.Sleep(10 * time.Second) // Wait for the notification to be sent
 
 	err = notifier.UseNotifier([]string{"-remove", notification_id})
 	if err != nil {

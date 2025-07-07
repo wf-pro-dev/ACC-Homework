@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/williamfotso/acc/assignment/notion"
-	"github.com/williamfotso/acc/crud"
+	database "github.com/williamfotso/acc/database"
 )
 
 // Assignment represents a homework or exam assignment
@@ -119,7 +119,7 @@ func (a *Assignment) GetCourseCode() string {
 func GetObjCourse(course_code string, db *sql.DB) map[string]string {
 
 	query := fmt.Sprintf("SELECT notion_id FROM courses WHERE code='%v'", course_code)
-	course, err := crud.GetHandler(query, db)
+	course, err := database.GetHandler(query, db)
 	if err != nil {
 		log.Fatal("Error getting course object: ", err)
 	}
@@ -129,7 +129,7 @@ func GetObjCourse(course_code string, db *sql.DB) map[string]string {
 func GetObjType(type_name string, db *sql.DB) map[string]string {
 
 	query := fmt.Sprintf("SELECT * FROM type WHERE name='%v'", type_name)
-	type_info, err := crud.GetHandler(query, db)
+	type_info, err := database.GetHandler(query, db)
 
 	if err != nil {
 		log.Fatal("Error getting type object: ", err)
@@ -152,7 +152,7 @@ func GetObjStatus(status_name string, db *sql.DB) map[string]string {
 	}
 
 	query := fmt.Sprintf("SELECT * FROM status WHERE name='%v'", name)
-	status_info, err := crud.GetHandler(query, db)
+	status_info, err := database.GetHandler(query, db)
 	if err != nil {
 		log.Fatal("Error getting status object: ", err)
 	}
@@ -182,7 +182,7 @@ func (a *Assignment) Add(db *sql.DB) (err error) {
 
 	delete(assignment, "id")
 
-	err = crud.PostHandler(assignment, "assignements", db)
+	err = database.PostHandler(assignment, "assignements", db)
 
 	if err != nil {
 		log.Fatalln("Error adding assignment to database: ", err)
@@ -201,7 +201,7 @@ func (a *Assignment) Add(db *sql.DB) (err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = crud.PutHanlder(lastVal, "notion_id", "assignements", notion_id, db)
+	err = database.PutHanlder(lastVal, "notion_id", "assignements", notion_id, db)
 
 	if err != nil {
 		log.Fatalln("Error updating assignment: ", err)
@@ -224,7 +224,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 		query += " AND deadline > NOW()"
 	}
 	query += " ORDER BY deadline ASC"
-	assignments, err := crud.GetHandler(query, db)
+	assignments, err := database.GetHandler(query, db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 
 func GetAssignmentsbyId(id string, db *sql.DB) *Assignment {
 
-	assignments, err := crud.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE id='%v'", id), db)
+	assignments, err := database.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE id='%v'", id), db)
 
 	if err != nil {
 		log.Fatal(err)
@@ -326,7 +326,7 @@ func GetAssignmentsbyId(id string, db *sql.DB) *Assignment {
 
 func GetAssignmentsbyNotionID(notion_id string, db *sql.DB) *Assignment {
 
-	assignments, err := crud.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE notion_id='%v'", notion_id), db)
+	assignments, err := database.GetHandler(fmt.Sprintf("SELECT * FROM assignements WHERE notion_id='%v'", notion_id), db)
 
 	if err != nil {
 		log.Fatal(err)
@@ -344,7 +344,7 @@ func GetAssignmentsbyNotionID(notion_id string, db *sql.DB) *Assignment {
 func (a *Assignment) GetID(db *sql.DB) int {
 
 	query := fmt.Sprintf("SELECT id FROM assignements WHERE notion_id='%v'", a.NotionID)
-	assignment, err := crud.GetHandler(query, db)
+	assignment, err := database.GetHandler(query, db)
 	if err != nil {
 		log.Fatalln("Error getting assignment id: ", err)
 		return 0
@@ -361,7 +361,7 @@ func (a *Assignment) GetID(db *sql.DB) int {
 
 func (a *Assignment) Update(col, value string, db *sql.DB) (err error) {
 
-	err = crud.PutHanlder(a.GetID(db), col, "assignements", value, db)
+	err = database.PutHanlder(a.GetID(db), col, "assignements", value, db)
 
 	if err != nil {
 		log.Fatalln("Error updating assignment in database: ", err)
@@ -395,7 +395,7 @@ func (a *Assignment) Update(col, value string, db *sql.DB) (err error) {
 
 func (a *Assignment) Delete(db *sql.DB) (err error) {
 
-	err = crud.DeleteHandler("assignements", "notion_id", a.NotionID, db)
+	err = database.DeleteHandler("assignements", "notion_id", a.NotionID, db)
 
 	if err != nil {
 		log.Fatalln(err)
