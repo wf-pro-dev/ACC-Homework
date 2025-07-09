@@ -2,21 +2,26 @@ package course
 
 import (
 	"bufio"
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
-	"github.com/williamfotso/acc/course/notion"
-	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/core/models/user"
+	"gorm.io/gorm"
 )
 
+// Course represents a school course
 type Course struct {
-	Name       string `json:"name"`
-	Code       string `json:"code"`
-	RoomNumber string `json:"room_number"`
-	Duration   string `json:"duration"`
-	NotionID   string `json:"notion_id"`
+	gorm.Model
+	UserID     uint      `gorm:"not null"`
+	User       user.User `gorm:"foreignKey:UserID;references:ID"`
+	NotionID   string    `gorm:"unique;not null"`
+	Code       string    `gorm:"unique;not null"`
+	Name       string    `gorm:"not null"`
+	Duration   string
+	RoomNumber string
 }
 
 func NewCourse() *Course {
@@ -84,55 +89,55 @@ func (c *Course) GetDuration() string {
 	return c.Duration
 }
 
-func GetCoursebyNotionID(notion_id string, db *sql.DB) *Course {
-
-	query := fmt.Sprintf("SELECT * FROM courses WHERE notion_id='%v'", notion_id)
-	course, err := database.GetHandler(query, db)
+func Get_Course_byCode(code string, db *gorm.DB) *Course {
+	course := &Course{}
+	err := db.Where("code = ?", code).First(course).Error
 	if err != nil {
-		log.Fatalln("Error getting course id: ", err)
+		log.Fatalln("Error getting course with code: ", err)
 		return nil
 	}
 
-	if len(course) == 0 {
-		log.Fatalln("Course not found")
-		return nil
-	}
-
-	return NewCourseFromMap(course[0])
+	return course
 }
 
-func NewCourseFromMap(_course map[string]string) *Course {
+func Get_Course_byNotionID(notion_id string, db *gorm.DB) *Course {
+
 	course := &Course{}
-	course.NotionID = _course["notion_id"]
-	course.Name = _course["name"]
-	course.Code = _course["code"]
-	course.RoomNumber = _course["room_number"]
-	course.Duration = _course["duration"]
+	err := db.Where("notion_id = ?", notion_id).First(course).Error
+	if err != nil {
+		log.Fatalln("Error getting course with notion id: ", err)
+		return nil
+	}
+
 	return course
 }
 
 func (c *Course) ToMap() map[string]string {
 	return map[string]string{
+		"id":          strconv.Itoa(int(c.ID)),
+		"user_id":     strconv.Itoa(int(c.UserID)),
 		"notion_id":   c.NotionID,
 		"name":        c.Name,
 		"code":        c.Code,
 		"room_number": c.RoomNumber,
 		"duration":    c.Duration,
+		"created_at":  c.CreatedAt.Format(time.DateOnly),
+		"updated_at":  c.UpdatedAt.Format(time.DateOnly),
 	}
 }
 
-func (c *Course) Add(db *sql.DB) (err error) {
+func (c *Course) Add(db *gorm.DB) (err error) {
 
 	course := c.ToMap()
 
-	err = database.PostHandler(course, "courses", db)
+	err = db.Create(c).Error
 
 	if err != nil {
 		log.Fatalln("Error adding course to database: ", err)
 		return err
 	}
 
-	notion_id, err_notion := notion.AddCourseToNotion(course)
+	notion_id, err_notion := Add_Notion(course)
 
 	if err_notion != nil {
 		log.Fatalln("Error adding course to Notion: ", err_notion)
@@ -140,14 +145,13 @@ func (c *Course) Add(db *sql.DB) (err error) {
 	}
 
 	var lastVal int
-	err = db.QueryRow("SELECT MAX(id) FROM courses").Scan(&lastVal)
+	err = db.Raw("SELECT MAX(id) FROM courses").Scan(&lastVal).Error
 	if err != nil {
 		log.Fatalln("Error getting course id: ", err)
 		return err
 	}
 
-	err = database.PutHanlder(lastVal+1, "notion_id", "courses", notion_id, db)
-
+	err = db.Model(&Course{}).Where("id = ?", lastVal+1).Update("notion_id", notion_id).Error
 	if err != nil {
 		log.Fatalln("Error updating course: ", err)
 		return err
@@ -156,8 +160,3 @@ func (c *Course) Add(db *sql.DB) (err error) {
 	return nil
 }
 
-func (c *Course) Update(col, value string, db *sql.DB) (err error) {
-	query := fmt.Sprintf("UPDATE courses SET %v = '%v' WHERE id = '%v'", col, value, c.NotionID)
-	_, err = db.Exec(query)
-	return err
-}

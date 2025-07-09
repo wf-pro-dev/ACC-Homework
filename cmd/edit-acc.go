@@ -64,7 +64,7 @@ var editCmd = &cobra.Command{
 		col := args[1]
 		newValue := args[2]
 
-		assignment := assignment.GetAssignmentsbyId(assignment_id, db)
+		assignment := assignment.Get_Assignment_byId(assignment_id, db)
 
 		err = assignment.Update(col, newValue, db)
 		if err != nil {

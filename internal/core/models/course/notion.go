@@ -1,4 +1,4 @@
-package notion
+package course
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/williamfotso/acc/course/notion/types"
+	"github.com/williamfotso/acc/internal/types"
 )
 
 var NOTION_API_KEY = os.Getenv("NOTION_API_KEY")
@@ -19,7 +19,7 @@ const BASE_URL = "https://api.notion.com/v1"
 const DATABASE_ID = "17e40a21a7e381129891fdcdaaa5dbec"
 
 // AddAssignmentToNotion adds an assignment to Notion efficiently
-func AddCourseToNotion(course map[string]string) (string, error) {
+func Add_Notion(course map[string]string) (string, error) {
 
 	// Create a single rich text object for reuse
 	createRichTextObj := func() types.RichText {
@@ -44,11 +44,11 @@ func AddCourseToNotion(course map[string]string) (string, error) {
 	}
 
 	// Create the request with strongly typed fields
-	req := types.PageRequest{}
+	req := types.CoursePageRequest{}
 	req.Parent.Type = "database_id"
 	req.Parent.DatabaseID = DATABASE_ID
 
-	properties := types.Properties{
+	properties := types.CourseProperties{
 		Name: types.Title{
 			Type: "title",
 		},

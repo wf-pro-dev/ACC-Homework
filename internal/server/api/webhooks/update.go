@@ -58,7 +58,7 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 
 		if value != "" {
 			// Update the assignment in the database
-			assignment := assignment.GetAssignmentsbyNotionID(page_id, db)
+			assignment := assignment.Get_Assignment_byNotionID(page_id, db)
 			if assignment == nil {
 				PrintERROR(w, http.StatusInternalServerError,
 					fmt.Sprintf("Error getting assignment: %s", err))
@@ -70,8 +70,8 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 					fmt.Sprintf("Error updating assignment in database: %s", err))
 			}
 
-			notification_id := fmt.Sprintf("%s-%s-%s", assignment.GetNotionID(), column, value)
-			title := fmt.Sprintf("%s: %s", assignment.GetCourseCode(), assignment.GetTitle())
+			notification_id := fmt.Sprintf("%s-%s-%s", assignment.NotionID, column, value)
+			title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
 			subtitle := fmt.Sprintf("Updated at %s", time.Now().Format(time.Stamp))
 			message := fmt.Sprintf("%s is now %s", column, value)
 

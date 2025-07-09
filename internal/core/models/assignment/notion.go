@@ -1,4 +1,4 @@
-package notion
+package assignment
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/williamfotso/acc/assignment/notion/types"
+	"github.com/williamfotso/acc/internal/types"
 )
 
 const BASE_URL = "https://api.notion.com/v1"
@@ -69,7 +69,9 @@ func sendRequest(req interface{}, method, url string) (respBody []byte, err erro
 }
 
 // AddAssignmentToNotion adds an assignment to Notion efficiently
-func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (string, error) {
+func (a *Assignment) Add_Notion(type_info, course_info map[string]string) (string, error) {
+
+	assign := a.ToMap()
 
 	// Create a single rich text object for reuse
 	richTextObj := types.RichText{
@@ -175,7 +177,10 @@ func AddAssignmentToNotion(assign, type_info, course_info map[string]string) (st
 	return notionResp.ID, nil
 }
 
-func UpdateAssignementToNotion(assign map[string]string, col string, value string, obj map[string]string) (err error) {
+func (a *Assignment) Update_Notion(col string, value string, obj map[string]string) (err error) {
+
+	assign := a.ToMap()
+
 	var req interface{}
 
 	switch col {
@@ -323,7 +328,9 @@ func UpdateAssignementToNotion(assign map[string]string, col string, value strin
 	return err
 }
 
-func DeleteAssignementFromNotion(assign map[string]string) (err error) {
+func (a *Assignment) Delete_Notion() (err error) {
+
+	assign := a.ToMap()
 
 	req := types.DeletionRequest{}
 	req.Archived = true
@@ -333,9 +340,9 @@ func DeleteAssignementFromNotion(assign map[string]string) (err error) {
 	return err
 }
 
-func GetPage(page_id string) (respBody []byte, err error) {
+func (a *Assignment) GetPage() (respBody []byte, err error) {
 
-	url := fmt.Sprintf("pages/%s", page_id)
+	url := fmt.Sprintf("pages/%s", a.NotionID)
 	respBody, err = sendRequest(nil, "GET", url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
@@ -344,9 +351,9 @@ func GetPage(page_id string) (respBody []byte, err error) {
 	return respBody, nil
 }
 
-func GetPageProperties(notion_id, property_id string) (respBody []byte, err error) {
+func (a *Assignment) GetPageProperties(property_id string) (respBody []byte, err error) {
 
-	url := fmt.Sprintf("pages/%s/properties/%s", notion_id, property_id)
+	url := fmt.Sprintf("pages/%s/properties/%s", a.NotionID, property_id)
 	respBody, err = sendRequest(nil, "GET", url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)

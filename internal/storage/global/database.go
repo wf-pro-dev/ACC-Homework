@@ -1,4 +1,5 @@
-package database
+
+package main
 
 import (
 	"database/sql"
@@ -10,41 +11,73 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
+	"github.com/williamfotso/acc/internal/core/models"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/core/models/course"
+	"github.com/williamfotso/acc/internal/core/models/user"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
-func GetDB() (*sql.DB, error) {
+func GetDB() (*gorm.DB, error) {
+    viper.SetConfigFile(".env")
+    err := viper.ReadInConfig()
+    if err != nil {
+        return nil, fmt.Errorf("error reading config file: %w", err)
+    }
 
-	viper.SetConfigFile(".env")
-	err := viper.ReadInConfig()
+    host := viper.GetString("DB_HOST")
+    port := viper.GetInt("DB_PORT")
+    user := viper.GetString("DB_USER")
+    password := viper.GetString("DB_PASSWORD")
+    dbname := viper.GetString("DB_NAME")
+
+    // Updated connection string with SSL
+    psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
+        host, port, user, password, dbname)
+
+    db, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
+	    NamingStrategy: schema.NamingStrategy{
+		    TablePrefix: "acc_schema.",
+	    },
+    })
+    if err != nil {
+        return nil, fmt.Errorf("error connecting to db: %w", err)
+    }
+
+    return db, nil
+}
+
+
+// InitGlobalDB initializes the RDS PostgreSQL connection
+func InitGlobalDB() error {
+	
+	db, err := GetDB()
 
 	if err != nil {
-		return nil, fmt.Errorf("error reading config file: %w", err)
+		return fmt.Errorf("failed to connect to global database: %w", err)
 	}
 
-	host := viper.GetString("DB_HOST")
-	port := viper.GetInt("DB_PORT")
-	user := viper.GetString("DB_USER")
-	password := viper.GetString("DB_PASSWORD")
-	dbname := viper.GetString("DB_NAME")
-
-	// Info Formatting
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-
-	// ERROR handler
-	db, err := sql.Open("postgres", psqlInfo)
+	// Auto migrate models
+	err = db.AutoMigrate(
+		&user.User{},
+		&models.Device{},
+		&course.Course{},
+		&models.AssignmentType{},
+		&models.AssignmentStatus{},
+		&assignment.Assignment{},
+		&models.SyncLog{},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to db: %w", err)
+		return fmt.Errorf("failed to migrate global database: %w", err)
 	}
 
-	err = db.Ping()
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to db: %w", err)
-	}
+	// Seed initial data if needed
+	//seedInitialData(db)
 
-	return db, nil
-
+	log.Println("Successfully connected to global database")
+	return nil
 }
 
 // ***************************************************************
@@ -224,4 +257,11 @@ func DeleteHandler(table, column, value string, db *sql.DB) error {
 	}
 
 	return err
+}
+
+func main () {
+	if err := InitGlobalDB(); err != nil {
+        	log.Fatalf("Failed to initialize database: %v", err)
+	}
+	log.Println("Database initialized successfully")
 }

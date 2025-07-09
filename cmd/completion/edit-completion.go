@@ -37,7 +37,7 @@ func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirectiv
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	assignment := assignment.GetAssignmentsbyId(assignment_id, db)
+	assignment := assignment.Get_Assignment_byId(assignment_id, db)
 
 	deadline_date, err := time.Parse(time.DateOnly, assignment.Deadline[:10])
 	if err != nil {

@@ -6,20 +6,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/williamfotso/acc/assignment/notion"
-	"github.com/williamfotso/acc/assignment/notion/types"
 	"github.com/williamfotso/acc/course"
 	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/core/pages"
+	"github.com/williamfotso/acc/internal/types"
 	"github.com/williamfotso/acc/notifier"
 )
 
-func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload NotionWebhookPayload) {
+func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.NotionWebhookPayload) {
 
 	// 1. Get the page id
 	page_id := payload.Entity.Id
 
 	// 2. Get the page properties
-	new_page, err := notion.GetPage(page_id)
+	new_page, err := pages.GetPage(page_id)
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error getting page properties: %s", err))

@@ -1,4 +1,4 @@
-package server
+package types
 
 type NotionWebhookPayload struct {
 	Id      string `json:"id"`

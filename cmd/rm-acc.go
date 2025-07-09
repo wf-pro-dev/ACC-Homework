@@ -38,7 +38,7 @@ var rmCmd = &cobra.Command{
 		}
 
 		assigmnent_id := args[0]
-		assignment := assignment.GetAssignmentsbyId(assigmnent_id, db)
+		assignment := assignment.Get_Assignment_byId(assigmnent_id, db)
 
 		assignment.Delete(db)
 	}}

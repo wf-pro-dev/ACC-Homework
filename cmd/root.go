@@ -22,7 +22,7 @@ func ValidateAssignmentId(id string, db *sql.DB) error {
 		return fmt.Errorf("failed to convert assignment ID to int: %s", err)
 	}
 
-	assignment := assignment.GetAssignmentsbyId(id, db)
+	assignment := assignment.Get_Assignment_byId(id, db)
 	if assignment == nil {
 		return fmt.Errorf("assignment not found")
 	}

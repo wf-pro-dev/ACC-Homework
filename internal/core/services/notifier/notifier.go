@@ -1,7 +1,8 @@
-package notifier
+package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os/exec"
 	"time"
@@ -131,4 +132,11 @@ func ScheduleNotifications() error {
 	}
 
 	return nil
+}
+
+func main() {
+	err := ScheduleNotifications()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

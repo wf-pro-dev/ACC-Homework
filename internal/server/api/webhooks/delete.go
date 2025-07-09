@@ -19,7 +19,7 @@ func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		return
 	}
 
-	assignment := assignment.GetAssignmentsbyNotionID(payload.Entity.Id, db)
+	assignment := assignment.Get_Assignment_byNotionID(payload.Entity.Id, db)
 	if assignment == nil {
 		err = fmt.Errorf("assignment not found")
 		PrintERROR(w, http.StatusInternalServerError,
