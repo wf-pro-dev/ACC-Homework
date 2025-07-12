@@ -28,9 +28,9 @@ func Get_AssignmentType_byName(name string, db *gorm.DB) *AssignmentType {
 
 func (a *AssignmentType) ToMap() map[string]string {
 	return map[string]string{
-		"notion_id": a.NotionID,
-		"name":      a.Name,
-		"color":     a.Color,
+		"id":		a.NotionID,
+		"name":		a.Name,
+		"color":	a.Color,
 	}
 }
 
@@ -54,9 +54,9 @@ func Get_AssignmentStatus_byName(name string, db *gorm.DB) *AssignmentStatus {
 
 func (a *AssignmentStatus) ToMap() map[string]string {
 	return map[string]string{
-		"notion_id": a.NotionID,
-		"name":      a.Name,
-		"color":     a.Color,
+		"id":		a.NotionID,
+		"name":		a.Name,
+		"color":	a.Color,
 	}
 }
 

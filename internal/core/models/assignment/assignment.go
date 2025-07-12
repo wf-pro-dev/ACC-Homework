@@ -178,16 +178,19 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 	fmt.Println("")
 }
 
-func Get_Assignment_byId(id string, db *gorm.DB) *Assignment {
+func Get_Assignment_byId(id uint, db *gorm.DB) *Assignment {
+    assignment := &Assignment{}
+    err := db.Preload("User").
+              Preload("Course").
+              Preload("Type").
+              Preload("Status").
+              Where("id = ?", id).
+              First(assignment).Error
 
-	assignment := &Assignment{}
-	err := db.Where("id = ?", id).First(assignment).Error
-
-	if err != nil {
-		return nil
-	}
-
-	return assignment
+    if err != nil {
+        return nil
+    }
+    return assignment
 }
 
 func Get_Assignment_byNotionID(notion_id string, db *gorm.DB) *Assignment {
@@ -236,7 +239,7 @@ func (a *Assignment) Add(db *gorm.DB) (err error) {
 		return err
 	}
 
-	notion_id, err_notion := a.Add_Notion(a.Type.ToMap(), a.Course.ToMap())
+	notion_id, err_notion := a.Add_Notion()
 
 	if err_notion != nil {
 		log.Fatalln("Error adding assignment to Notion: ", err_notion)

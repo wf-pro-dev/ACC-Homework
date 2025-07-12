@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/williamfotso/acc/assignment/notion/types"
-	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/types"
+//	"github.com/williamfotso/acc/database"
 )
 
-func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
+/*func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -29,7 +29,7 @@ func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 	}
 
 	return course_codes, cobra.ShellCompDirectiveNoFileComp
-}
+}*/
 
 // CompleteColumns provides completion for column names
 func CompleteColumns() ([]string, cobra.ShellCompDirective) {

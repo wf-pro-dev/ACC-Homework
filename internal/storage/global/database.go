@@ -1,5 +1,5 @@
 
-package main
+package global 
 
 import (
 	"database/sql"
@@ -39,7 +39,7 @@ func GetDB() (*gorm.DB, error) {
 
     db, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
 	    NamingStrategy: schema.NamingStrategy{
-		    TablePrefix: "acc_schema.",
+		    TablePrefix: "public.",
 	    },
     })
     if err != nil {

@@ -30,7 +30,7 @@ func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
 	}
 }
 
-func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirective) {
+/*func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirective) {
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -66,7 +66,7 @@ func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirectiv
 		fmt.Sprintf("%s\t%s", next_week, "A week from deadline"),
 	}, cobra.ShellCompDirectiveNoFileComp
 
-}
+}*/
 
 func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	db, err := database.GetDB()

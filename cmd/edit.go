@@ -5,10 +5,9 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
-	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/assignment/notion/types"
-	"github.com/williamfotso/acc/cmd/completion"
-	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/types"
+	"github.com/williamfotso/acc/internal/services/client"
+	//"github.com/williamfotso/acc/cmd/completion"
 )
 
 func ValidateColumn(col string) error {
@@ -29,13 +28,13 @@ var editCmd = &cobra.Command{
 	Use:               "edit",
 	Short:             "Edit an existing assignment in the ACC Homework tracker.",
 	Long:              `Edit an existing assignment in the ACC Homework tracker.`,
-	ValidArgsFunction: completion.EditCompletion,
+	//ValidArgsFunction: completion.EditCompletion,
 	Args: func(cmd *cobra.Command, args []string) error {
 
-		db, DBerr := database.GetDB()
+		/*db, DBerr := database.GetDB()
 		if DBerr != nil {
 			return DBerr
-		}
+		}*/
 
 		var err error
 
@@ -43,9 +42,9 @@ var editCmd = &cobra.Command{
 			return fmt.Errorf("edit-acc requires exactly 3 arguments")
 		}
 
-		if err = ValidateAssignmentId(args[0], db); err != nil {
+		/*if err = ValidateAssignmentId(args[0], db); err != nil {
 			return err
-		}
+		}*/
 
 		if err = ValidateColumn(args[1]); err != nil {
 			return err
@@ -55,18 +54,11 @@ var editCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 
-		db, err := database.GetDB()
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		assignment_id := args[0]
 		col := args[1]
 		newValue := args[2]
 
-		assignment := assignment.Get_Assignment_byId(assignment_id, db)
-
-		err = assignment.Update(col, newValue, db)
+		err := client.UpdateAssignment(assignment_id, col, newValue)
 		if err != nil {
 			log.Fatalln("Error updating assignment: ", err)
 		}

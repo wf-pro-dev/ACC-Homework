@@ -1,76 +1,17 @@
 package assignment
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
 
 	"github.com/williamfotso/acc/internal/types"
+	"github.com/williamfotso/acc/internal/services"
 )
 
-const BASE_URL = "https://api.notion.com/v1"
-
-func sendRequest(req interface{}, method, url string) (respBody []byte, err error) {
-
-	var jsonData []byte
-	if req != nil {
-		jsonData, err = json.Marshal(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request: %w", err)
-		}
-	}
-
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	final_url := fmt.Sprintf("%s/%s", BASE_URL, url)
-
-	var httpReq *http.Request
-
-	httpReq, err = http.NewRequestWithContext(ctx, method, final_url, bytes.NewBuffer(jsonData))
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Set headers
-	httpReq.Header.Set("Authorization", "Bearer "+os.Getenv("NOTION_API_KEY"))
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Notion-Version", "2022-06-28")
-
-	// Send request
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response
-	respBody, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Check for errors
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("notion API error (status %d): %s", resp.StatusCode, string(respBody))
-	}
-
-	return respBody, nil
-}
 
 // AddAssignmentToNotion adds an assignment to Notion efficiently
-func (a *Assignment) Add_Notion(type_info, course_info map[string]string) (string, error) {
-
+func (a *Assignment) Add_Notion() (string, error) {
+	
 	assign := a.ToMap()
 
 	// Create a single rich text object for reuse
@@ -95,7 +36,7 @@ func (a *Assignment) Add_Notion(type_info, course_info map[string]string) (strin
 	// Create the request with strongly typed fields
 	req := types.PageRequest{}
 	req.Parent.Type = "database_id"
-	req.Parent.DatabaseID = "17e40a21a7e381a18a85ccc380a0beec"
+	req.Parent.DatabaseID = a.User.AssignmentsDbId 
 	// Set deadline
 	req.Properties = &types.Properties{
 		Deadline: types.Deadline{
@@ -110,14 +51,14 @@ func (a *Assignment) Add_Notion(type_info, course_info map[string]string) (strin
 			Type: "relation",
 			Relation: []types.Relation{
 				{
-					ID: course_info["notion_id"],
+					ID: a.Course.NotionID,
 				},
 			},
 		},
 		Type: types.Type{
 			ID:     "S~Ce",
 			Type:   "select",
-			Select: type_info,
+			Select: a.Type.ToMap(),
 		},
 		Status: types.Status{
 			ID:   "%5Bm%5Cs",
@@ -135,6 +76,12 @@ func (a *Assignment) Add_Notion(type_info, course_info map[string]string) (strin
 		AssignmentName: types.AssignmentName{
 			ID:   "title",
 			Type: "title",
+		},
+
+		Link: types.Link{
+                        ID:   "jgPD",
+                        Type: "url",
+                        URL:  a.Link,
 		},
 	}
 	// Set TODO
@@ -159,7 +106,7 @@ func (a *Assignment) Add_Notion(type_info, course_info map[string]string) (strin
 	assignment_name_obj.Title = []types.RichText{titleText}
 	req.Properties.AssignmentName = assignment_name_obj
 
-	resp, err := sendRequest(req, "POST", "pages")
+	resp, err := services.SendNotionRequest(req, "POST", "pages", a.User.NotionAPIKey)
 	if err != nil {
 		return "", err
 	}
@@ -285,7 +232,7 @@ func (a *Assignment) Update_Notion(col string, value string, obj map[string]stri
 
 		req = todoReq
 
-	case "type":
+	case "type_name":
 
 		typeReq := types.UpdateTypeRequest{}
 		typeReq.Properties = types.PropertiesWithRequiredType{}
@@ -298,7 +245,7 @@ func (a *Assignment) Update_Notion(col string, value string, obj map[string]stri
 
 		req = typeReq
 
-	case "status":
+	case "status_name":
 
 		var statusObj types.StatusObject
 		statusObj.ID = obj["id"]
@@ -323,7 +270,7 @@ func (a *Assignment) Update_Notion(col string, value string, obj map[string]stri
 
 	url := fmt.Sprintf("pages/%s", assign["notion_id"])
 
-	_, err = sendRequest(req, "PATCH", url)
+	_, err = services.SendNotionRequest(req, "PATCH", url, a.User.NotionAPIKey)
 
 	return err
 }
@@ -335,7 +282,9 @@ func (a *Assignment) Delete_Notion() (err error) {
 	req := types.DeletionRequest{}
 	req.Archived = true
 
-	_, err = sendRequest(req, "PATCH", assign["notion_id"])
+	_, err = services.SendNotionRequest(req, "PATCH", assign["notion_id"], a.User.NotionAPIKey)
+
+
 
 	return err
 }
@@ -343,7 +292,7 @@ func (a *Assignment) Delete_Notion() (err error) {
 func (a *Assignment) GetPage() (respBody []byte, err error) {
 
 	url := fmt.Sprintf("pages/%s", a.NotionID)
-	respBody, err = sendRequest(nil, "GET", url)
+	respBody, err = services.SendNotionRequest(nil, "GET", url, a.User.NotionAPIKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -354,7 +303,7 @@ func (a *Assignment) GetPage() (respBody []byte, err error) {
 func (a *Assignment) GetPageProperties(property_id string) (respBody []byte, err error) {
 
 	url := fmt.Sprintf("pages/%s/properties/%s", a.NotionID, property_id)
-	respBody, err = sendRequest(nil, "GET", url)
+	respBody, err = services.SendNotionRequest(nil, "GET", url, a.User.NotionAPIKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}

@@ -1,28 +1,29 @@
 package cmd
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/assignment/notion/types"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/types"
+	"gorm.io/gorm"
 )
 
-func ValidateAssignmentId(id string, db *sql.DB) error {
+func ValidateAssignmentId(id string, db *gorm.DB) error {
 
 	if id == "" {
 		return fmt.Errorf("assignment ID is required")
 	}
 
-	_, err := strconv.Atoi(id)
+	int_id, err := strconv.Atoi(id)
 	if err != nil {
 		return fmt.Errorf("failed to convert assignment ID to int: %s", err)
 	}
 
-	assignment := assignment.Get_Assignment_byId(id, db)
+
+	assignment := assignment.Get_Assignment_byId(uint(int_id), db)
 	if assignment == nil {
 		return fmt.Errorf("assignment not found")
 	}
