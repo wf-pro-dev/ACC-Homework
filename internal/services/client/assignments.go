@@ -1,4 +1,5 @@
 package client
+
 import (
 	"bytes"
 	"encoding/json"
@@ -10,20 +11,20 @@ import (
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/services/network"
 	"github.com/williamfotso/acc/internal/storage/local"
-
 )
 
-func CreateAssignment( assignmentData map[string]string) (map[string]string ,error) {
+func CreateAssignment(assignmentData map[string]string) (map[string]string, error) {
 
-	db, err := local.GetLocalDB(1)
+	userID := uint(1)
+	db, err := local.GetLocalDB(userID)
 	if err != nil {
-                return nil, err
-        }
+		return nil, err
+	}
 
 	tx := db.Begin()
-    	defer func() {
+	defer func() {
 		if r := recover(); r != nil {
-		    tx.Rollback()
+			tx.Rollback()
 		}
 	}()
 
@@ -34,26 +35,24 @@ func CreateAssignment( assignmentData map[string]string) (map[string]string ,err
 
 	// Create local assignment
 	a := assignment.LocalAssignment{
-		Title:       assignmentData["title"],
-		Todo:        assignmentData["todo"],
-		Deadline:    deadline,
-		Link:        assignmentData["link"],
-		CourseCode:  assignmentData["course_code"],
-		TypeName:    assignmentData["type_name"],
-		StatusName:  assignmentData["status_name"],
+		Title:      assignmentData["title"],
+		Todo:       assignmentData["todo"],
+		Deadline:   deadline,
+		Link:       assignmentData["link"],
+		CourseCode: assignmentData["course_code"],
+		TypeName:   assignmentData["type_name"],
+		StatusName: assignmentData["status_name"],
 	}
-	
 
 	isOnline := network.IsOnline()
 
 	if isOnline {
 
-
 		new_client, err := NewClient()
 		if err != nil {
 			return nil, err
 		}
-		
+
 		jsonData, _ := json.Marshal(assignmentData)
 
 		resp, err := new_client.Post(
@@ -61,11 +60,10 @@ func CreateAssignment( assignmentData map[string]string) (map[string]string ,err
 			"application/json",
 			bytes.NewBuffer(jsonData),
 		)
-		
+
 		if err != nil {
 			return nil, err
 		}
-
 
 		defer resp.Body.Close()
 
@@ -74,11 +72,10 @@ func CreateAssignment( assignmentData map[string]string) (map[string]string ,err
 			return nil, fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
 		}
 
-		
 		var response struct {
-			Message string                          `json:"message"`
-			Assignment map[string]interface{}       `json:"assignment"`
-			Error   string                          `json:"error,omitempty"`
+			Message    string                 `json:"message"`
+			Assignment map[string]interface{} `json:"assignment"`
+			Error      string                 `json:"error,omitempty"`
 		}
 
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -95,55 +92,53 @@ func CreateAssignment( assignmentData map[string]string) (map[string]string ,err
 
 		a.NotionID = response.Assignment["notion_id"].(string)
 		a.SyncStatus = assignment.SyncStatusSynced
-	
+
 	} else {
 		a.SyncStatus = assignment.SyncStatusPending
 	}
-	
+
 	if err := tx.Create(&a).Error; err != nil {
-        	tx.Rollback()
-        	return nil, fmt.Errorf("local create failed: %w", err)
-    	}
+		tx.Rollback()
+		return nil, fmt.Errorf("local create failed: %w", err)
+	}
 
-    	if err := tx.Commit().Error; err != nil {
-        	return nil, fmt.Errorf("commit failed: %w", err)
-    	}
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("commit failed: %w", err)
+	}
 
-	return a.ToMap() , nil 
+	return a.ToMap(), nil
 }
-
 
 func UpdateAssignment(id, column, value string) error {
 	new_client, err := NewClient()
-        if err != nil {
-                return err
-        }
+	if err != nil {
+		return err
+	}
 
 	updateData := map[string]interface{}{
-		"id" : id,
-                "value": value,
-                "column": column,
-        }
-        
+		"id":     id,
+		"value":  value,
+		"column": column,
+	}
+
 	jsonData, _ := json.Marshal(updateData)
 
-        resp, err := new_client.Post(
-                "http://localhost:3000/acc-homework/assignment/update",
-                "application/json",
-                bytes.NewBuffer(jsonData),
+	resp, err := new_client.Post(
+		"http://localhost:3000/acc-homework/assignment/update",
+		"application/json",
+		bytes.NewBuffer(jsonData),
 	)
 
-	 if err != nil {
-                return err
-        }
+	if err != nil {
+		return err
+	}
 
+	defer resp.Body.Close()
 
-        defer resp.Body.Close()
-
-        if resp.StatusCode != http.StatusOK {
-                body, _ := io.ReadAll(resp.Body)
-                return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
-        }
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
+	}
 
 	return nil
 }

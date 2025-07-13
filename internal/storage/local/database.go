@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	"github.com/spf13/viper"
+	"github.com/williamfotso/acc/internal/core/models"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/core/models/course"
-	"github.com/williamfotso/acc/internal/core/models/user"
-	"github.com/williamfotso/acc/internal/core/models"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 var (
@@ -95,12 +94,37 @@ func initializeSchema(db *gorm.DB) error {
 
 	// Run migrations
 	return db.AutoMigrate(
-		&user.LocalUser{},
 		&course.LocalCourse{},
 		&models.LocalAssignmentType{},
 		&models.LocalAssignmentStatus{},
 		&assignment.LocalAssignment{},
 	)
+}
+
+func SeedInitialData(db *gorm.DB) error {
+	types := []*models.LocalAssignmentType{
+		{ID: 1, Name: "HW", Color: "yellow", NotionID: "Vn}Z"},
+		{ID: 2, Name: "Exam", Color: "red", NotionID: "oiNS"},
+	}
+
+	// Assignment statuses
+	statuses := []*models.LocalAssignmentStatus{
+		{ID: 1, Name: "Not started", Color: "default", NotionID: "3aa77cf8-c39e-4c7b-b7d2-ab15ae43ff23"},
+		{ID: 2, Name: "In progress", Color: "blue", NotionID: "97903420-1e83-4b3a-9eaf-a904354c968b"},
+		{ID: 3, Name: "Done", Color: "green", NotionID: "2fef8044-d8d7-4fcf-a3ee-393a1d558e94"},
+	}
+
+	err := db.Create(types).Error
+	if err != nil {
+		return err
+	}
+
+	err = db.Create(statuses).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CloseAll closes all database connections
