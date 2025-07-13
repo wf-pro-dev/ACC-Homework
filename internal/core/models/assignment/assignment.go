@@ -20,17 +20,18 @@ import (
 type Assignment struct {
 	gorm.Model
 	UserID     uint
-	User       user.User `gorm:"foreignKey:UserID;references:ID"`
 	NotionID   string    `gorm:"unique"`
 	Title      string    `gorm:"not null"`
 	Todo       string
 	Deadline   time.Time `gorm:"not null"`
 	Link       string    `gorm:"default:https://acconline.austincc.edu/ultra/stream"`
 	CourseCode string
-	Course     course.Course           `gorm:"foreignKey:CourseCode;references:Code"`
 	TypeName   string                  `gorm:"not null"`
-	Type       models.AssignmentType   `gorm:"foreignKey:TypeName;references:Name"`
 	StatusName string                  `gorm:"not null"`
+
+	User       user.User `gorm:"foreignKey:UserID;references:ID"`
+	Course     course.Course           `gorm:"foreignKey:CourseCode;references:Code"`
+	Type       models.AssignmentType   `gorm:"foreignKey:TypeName;references:Name"`
 	Status     models.AssignmentStatus `gorm:"foreignKey:StatusName;references:Name"`
 }
 
