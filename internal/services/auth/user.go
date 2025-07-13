@@ -15,7 +15,7 @@ func GetUser() (map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	resp, err := c.Get("http://localhost:3000/acc-homework/user")
+	resp, err := c.Get("https://newsroom.dedyn.io/acc-homework/user")
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

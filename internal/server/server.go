@@ -12,6 +12,8 @@ import (
 	"gorm.io/gorm"
 	"github.com/gorilla/sessions"
 	"github.com/williamfotso/acc/internal/storage/global"
+	"github.com/williamfotso/acc/internal/core/models/user"
+	"github.com/williamfotso/acc/internal/types"
 
 )
 
@@ -71,7 +73,7 @@ func StartServer() {
                 return
 	}
 	
-	http.HandleFunc("/webhooks", webhookTokenHandler)
+	http.HandleFunc("/webhooks", dbMiddleware(db,notionWebhookHandler))
 
 	http.HandleFunc("/acc-homework/register", dbMiddleware(db,RegisterHandler))
 	http.HandleFunc("/acc-homework/login", dbMiddleware(db,LoginHandler))
@@ -128,7 +130,20 @@ func PrintERROR(w http.ResponseWriter, code int, message string) {
 	http.Error(w, message, code)
 }
 
-/*func notionWebhookHandler(w http.ResponseWriter, r *http.Request) {
+func notionWebhookHandler(w http.ResponseWriter, r *http.Request) {
+	
+	dbVal := r.Context().Value("db")
+        if dbVal == nil {
+                PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+                return
+        }
+
+        db, ok := dbVal.(*gorm.DB)
+        if !ok {
+                PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+                return
+        }
+
 	// 1. Verify it's a POST request
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -136,7 +151,7 @@ func PrintERROR(w http.ResponseWriter, code int, message string) {
 	}
 
 	// 2. Decode the payload
-	var payload NotionWebhookPayload
+	var payload types.NotionWebhookPayload
 
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
@@ -154,15 +169,23 @@ func PrintERROR(w http.ResponseWriter, code int, message string) {
 		}
 	}
 
+	user_notion_id := payload.Authors[0].Id
+	
+	u, err := user.Get_User_by_NotionID(user_notion_id,db)
+	if err != nil {
+		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error getting user: %s", err))
+	}
+
+
 	// 4. Handle the payload
 	switch payload.Type {
 	case "page.properties_updated":
-		WebhookUpdateHandler(w, r, payload)
+		WebhookUpdateHandler(w, r, payload, u)
 	case "page.created":
-		WebhookCreateHandler(w, r, payload)
+		WebhookCreateHandler(w, r, payload, u)
 	case "page.deleted":
 		WebhookDeleteHandler(w, r, payload)
 	default:
 		PrintERROR(w, http.StatusBadRequest, fmt.Sprintf("Unknown payload type: %s", payload.Type))
 	}
-}*/
+}

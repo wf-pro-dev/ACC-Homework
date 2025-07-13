@@ -15,7 +15,7 @@ func Logout() error {
 
 	// Make POST request to logout endpoint (empty body)
 	resp, err := c.Post(
-		"http://localhost:3000/acc-homework/logout", // Note: changed from /login to /logout
+		"https://newsroom.dedyn.io/acc-homework/logout", // Note: changed from /login to /logout
 		"application/json",
 		nil, // No body needed for logout
 	)

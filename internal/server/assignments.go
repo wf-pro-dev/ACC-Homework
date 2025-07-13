@@ -5,22 +5,30 @@ import (
 	"net/http"
 	"fmt"
 	"time"
+	"strconv"
 
 	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/core/models"
 	"gorm.io/gorm"
 )
 
 func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 
+	userIDVal := r.Context().Value("user_id")
+        if userIDVal == nil {
+                PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
+                return
+        }
+	
+	userID, ok := userIDVal.(uint)
+        if !ok {
+                PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
+                return
+        }
+
 	dbVal := r.Context().Value("db")
 	if dbVal == nil {
 		PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
-		return
-	}
-
-	userIDVal := r.Context().Value("user_id")
-	if userIDVal == nil {
-		PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
 		return
 	}
 
@@ -31,13 +39,11 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx := db.Begin()
-
-	userID, ok := userIDVal.(uint)
-	if !ok {
-		PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
-		return
-	}
-
+	defer func() {
+    		if r := recover(); r != nil {
+        		tx.Rollback()
+    		}
+	}()
 
 	
 	var input struct {
@@ -85,7 +91,11 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	aObj := &aVal
 
-	a := assignment.Get_Assignment_byId(aObj.ID, tx)
+	a, err := assignment.Get_Assignment_byId(aObj.ID, tx)
+	if err != nil {
+                PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to getting assignment: %s", err))
+                return
+        }
 
 	notion_id, err := a.Add_Notion()
 	if err != nil {
@@ -120,21 +130,15 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 "assignment":    assignmentMap,
         })
 
-
 }
-
 func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
+	
 	dbVal := r.Context().Value("db")
         if dbVal == nil {
                 PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
                 return
         }
 
-        /*userIDVal := r.Context().Value("user_id")
-        if userIDVal == nil {
-                PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
-                return
-        }*/
 
         db, ok := dbVal.(*gorm.DB)
         if !ok {
@@ -142,17 +146,11 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 return
         }
 
-        /*userID, ok := userIDVal.(uint)
-        if !ok {
-                PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
-                return
-        }*/
-
 
 	var updateData struct {
-		ID uint			`json:"id"`
-        	Value string		`json:"value"`
-        	Column string		`json:"column`
+		ID 	string		`json:"id"`
+        	Value	string		`json:"value"`
+        	Column	string		`json:"column`
     	}
 
 	err := json.NewDecoder(r.Body).Decode(&updateData)
@@ -161,13 +159,24 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 return
         }
 
-	a := assignment.Get_Assignment_byId(updateData.ID, db)
-
-	err = db.Model(&a).Update(updateData.Column, updateData.Value).Error
+	int_id, err := strconv.Atoi(updateData.ID)
 	if err != nil {
-                PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error updating assignment",err))
-		return
+		PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to convert assignment ID to int: %s", err))
+                return
         }
+
+	a, err := assignment.Get_Assignment_byId(uint(int_id), db)
+	if err != nil {
+                PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to getting assignment: %s", err))
+                return
+        }
+
+	if err := db.Exec(fmt.Sprintf("UPDATE assignments SET %s = ?, updated_at = ? WHERE id = ?",updateData.Column), 
+        	 updateData.Value, time.Now().Format(time.RFC3339), a.ID).Error; err != nil {
+    		 PrintERROR(w, http.StatusInternalServerError,
+                                        fmt.Sprintf("Error updating assignment in database: %s", err))
+		return
+	}
 
 	value := updateData.Value
 
@@ -178,13 +187,15 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	var obj map[string]string
 
 	if updateData.Column == "status_name" {
-		obj = a.Status.ToMap()
+		var status = models.Get_AssignmentStatus_byName(value, db)
+		obj = status.ToMap()
 	} else {
-		obj = a.Type.ToMap()
+		var t = models.Get_AssignmentType_byName(value, db)
+		obj = t.ToMap()
 	}
 
-	err = a.Update_Notion(value, updateData.Column, obj)
-        if !ok {
+	err = a.Update_Notion(updateData.Column,value , obj)
+        if err != nil {
                 PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error updating assignment in notion",err))
                 return
         }

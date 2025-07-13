@@ -289,10 +289,10 @@ func (a *Assignment) Delete_Notion() (err error) {
 	return err
 }
 
-func (a *Assignment) GetPage() (respBody []byte, err error) {
+func GetPage(page_id, sender_id string) (respBody []byte, err error) {
 
-	url := fmt.Sprintf("pages/%s", a.NotionID)
-	respBody, err = services.SendNotionRequest(nil, "GET", url, a.User.NotionAPIKey)
+	url := fmt.Sprintf("pages/%s", page_id)
+	respBody, err = services.SendNotionRequest(nil, "GET", url, sender_id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -300,10 +300,10 @@ func (a *Assignment) GetPage() (respBody []byte, err error) {
 	return respBody, nil
 }
 
-func (a *Assignment) GetPageProperties(property_id string) (respBody []byte, err error) {
+func GetPageProperties(page_id, property_id, sender_id string) (respBody []byte, err error) {
 
-	url := fmt.Sprintf("pages/%s/properties/%s", a.NotionID, property_id)
-	respBody, err = services.SendNotionRequest(nil, "GET", url, a.User.NotionAPIKey)
+	url := fmt.Sprintf("pages/%s/properties/%s", page_id, property_id)
+	respBody, err = services.SendNotionRequest(nil, "GET", url, sender_id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}

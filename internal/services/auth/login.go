@@ -24,7 +24,7 @@ func Login(username, password string) error {
 	jsonData, _ := json.Marshal(loginData)
 
 	resp, err := new_client.Post(
-		"http://localhost:3000/acc-homework/login",
+		"https://newsroom.dedyn.io/acc-homework/login",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"time"
 	"gorm.io/gorm"
 )
@@ -13,6 +14,7 @@ type User struct {
 	PasswordHash 	string `gorm:"not null"`
 	NotionAPIKey 	string // Encrypted in application layer
 	AssignmentsDbId string
+	NotionID	string
 	CoursesDbId	string
 	LastSync     	*time.Time
 }
@@ -32,4 +34,14 @@ func (u *User) ToMap() map[string]interface{} {
 		"created_at":      u.CreatedAt,
 		"updated_at":      u.UpdatedAt,
 	}
+}
+
+
+func Get_User_by_NotionID(notion_id string, db *gorm.DB) (*User, error) {
+	u := &User{}
+	err := db.Where("notion_id = ?", notion_id).First(u).Error
+	if err != nil {
+		return nil, fmt.Errorf("Error getting user with notion id: ", err)
+	}
+	return u, nil
 }

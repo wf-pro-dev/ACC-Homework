@@ -3,38 +3,51 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/database"
-	"github.com/williamfotso/acc/notifier"
+	"gorm.io/gorm"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/types"
 )
 
-func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload NotionWebhookPayload) {
+func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload types.NotionWebhookPayload) {
 
-	db, err := database.GetDB()
-	if err != nil {
-		PrintERROR(w, http.StatusInternalServerError,
-			fmt.Sprintf("Error getting database: %s", err))
-		return
+	
+	dbVal := r.Context().Value("db")
+        if dbVal == nil {
+                PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+                return
+        }
+
+        db, ok := dbVal.(*gorm.DB)
+        if !ok {
+                PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+                return
 	}
+        
+	tx := db.Begin()
+        defer func() {
+                if r := recover(); r != nil {
+                        tx.Rollback()
+                }
+        }()	
 
-	assignment := assignment.Get_Assignment_byNotionID(payload.Entity.Id, db)
-	if assignment == nil {
-		err = fmt.Errorf("assignment not found")
+	a, err := assignment.Get_Assignment_byNotionID(payload.Entity.Id, tx)
+
+	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error getting assignment: %s", err))
 		return
 	}
 
-	err = database.DeleteHandler("assignements", "notion_id", payload.Entity.Id, db)
+	err = tx.Delete(&a).Error 
 	if err != nil {
+		tx.Rollback()
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error deleting assignment: %s", err))
 		return
 	}
 
-	notification_id := fmt.Sprintf("%s-deleted", assignment.NotionID)
+	/*notification_id := fmt.Sprintf("%s-deleted", assignment.NotionID)
 	title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
 	subtitle := fmt.Sprintf("Deleted at %s", time.Now().Format(time.Stamp))
 	message := "Assignment deleted"
@@ -60,7 +73,9 @@ func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload Notion
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error removing notification: %s", err))
-	}
+	}*/
 
-	PrintLog(fmt.Sprintf("Assignment deleted: %s %s", payload.Entity.Id, assignment.Title))
+	tx.Commit()
+
+	PrintLog(fmt.Sprintf("Assignment deleted: %s %s", payload.Entity.Id, a.Title))
 }

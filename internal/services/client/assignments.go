@@ -16,7 +16,7 @@ func CreateAssignment( assignmentData map[string]string) (map[string]interface{}
 	jsonData, _ := json.Marshal(assignmentData)
 
 	resp, err := new_client.Post(
-		"http://localhost:3000/acc-homework/assignment",
+		"https://newsroom.dedyn.io/acc-homework/assignment",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)

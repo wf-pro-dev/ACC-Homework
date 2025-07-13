@@ -1,41 +1,54 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/assignment/notion"
-	"github.com/williamfotso/acc/assignment/notion/types"
-	"github.com/williamfotso/acc/course"
-	"github.com/williamfotso/acc/database"
-	"github.com/williamfotso/acc/notifier"
+	"gorm.io/gorm"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/core/models/user"
+	"github.com/williamfotso/acc/internal/types"
+	"github.com/williamfotso/acc/internal/core/models/course"
 )
 
-func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload NotionWebhookPayload) {
+func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload types.NotionWebhookPayload, u *user.User) {
 
-	// 3. Get the page id
+
+	dbVal := r.Context().Value("db")
+        if dbVal == nil {
+                PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+                return
+        }
+
+        db, ok := dbVal.(*gorm.DB)
+        if !ok {
+                PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+                return
+        }
+
+        tx := db.Begin()
+        defer func() {
+                if r := recover(); r != nil {
+                        tx.Rollback()
+                }
+        }()	
+
+	
+	//  Get the page id
 	page_id := payload.Entity.Id
-
-	// 5. Get the database
-	db, err := database.GetDB()
-	if err != nil {
-		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error getting database: %s", err))
-		return
-	}
 
 	// 6. Loop through the properties
 	for _, property_id := range payload.Data.Properties {
 
 		// 7. Get the updated property
-		property, err := notion.GetPageProperties(page_id, property_id)
+		property, err := assignment.GetPageProperties(page_id, property_id, u.NotionAPIKey)
 		if err != nil {
 			PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Fetching properties: %s", err))
 			return
 		}
+
 
 		// For debugging
 		// var property_map map[string]interface{}
@@ -50,27 +63,34 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 		}
 
 		// 9. Get the new value from the property
-		value := GetValue(w, property, column, db)
+		value := GetValue(w, property, column, tx)
 
 		// Log the update
 		PrintLog(fmt.Sprintf("page_id %s property_id %s column %s value %s",
 			page_id, property_id, column, value))
 
 		if value != "" {
+			
 			// Update the assignment in the database
-			assignment := assignment.Get_Assignment_byNotionID(page_id, db)
-			if assignment == nil {
+			
+			a, err := assignment.Get_Assignment_byNotionID(page_id, tx)
+			if err != nil {
 				PrintERROR(w, http.StatusInternalServerError,
 					fmt.Sprintf("Error getting assignment: %s", err))
 			}
 
-			err = database.PutHanlder(assignment.GetID(db), column, "assignements", value, db)
-			if err != nil {
+			if err := tx.Exec(fmt.Sprintf("UPDATE assignments SET %s = ?, updated_at = ? WHERE id = ?",column),
+                		value, time.Now().Format(time.RFC3339), a.ID).Error; err != nil {
+        			
+				tx.Rollback()
 				PrintERROR(w, http.StatusInternalServerError,
-					fmt.Sprintf("Error updating assignment in database: %s", err))
-			}
+                                        fmt.Sprintf("Error updating assignment in database: %s", err))
+				return
+			} 
 
-			notification_id := fmt.Sprintf("%s-%s-%s", assignment.NotionID, column, value)
+			tx.Commit()
+
+			/*notification_id := fmt.Sprintf("%s-%s-%s", assignment.NotionID, column, value)
 			title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
 			subtitle := fmt.Sprintf("Updated at %s", time.Now().Format(time.Stamp))
 			message := fmt.Sprintf("%s is now %s", column, value)
@@ -95,14 +115,13 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload Notion
 			if err != nil {
 				PrintERROR(w, http.StatusInternalServerError,
 					fmt.Sprintf("Error removing notification: %s", err))
-			}
+			}*/
 		}
 	}
 
-	fmt.Print("\n\n")
 }
 
-func GetValue(w http.ResponseWriter, property []byte, column string, db *sql.DB) string {
+func GetValue(w http.ResponseWriter, property []byte, column string, db *gorm.DB) string {
 	var value string
 	switch column {
 
@@ -117,7 +136,7 @@ func GetValue(w http.ResponseWriter, property []byte, column string, db *sql.DB)
 		json.Unmarshal(property, &coursesType)
 
 		if len(coursesType.Courses) > 0 {
-			course := course.GetCoursebyNotionID(coursesType.Courses[0].Relation.ID, db)
+			course := course.Get_Course_byNotionID(coursesType.Courses[0].Relation.ID, db)
 
 			if course == nil {
 				value = ""
@@ -169,7 +188,7 @@ func GetValue(w http.ResponseWriter, property []byte, column string, db *sql.DB)
 		json.Unmarshal(property, &titleType)
 		value = titleType.Results[0].Title.PlainText
 
-	case "type":
+	case "type_name":
 
 		var selectType struct {
 			Select map[string]string `json:"select"`
@@ -178,7 +197,7 @@ func GetValue(w http.ResponseWriter, property []byte, column string, db *sql.DB)
 		json.Unmarshal(property, &selectType)
 		value = selectType.Select["name"]
 
-	case "status":
+	case "status_name":
 		var statusType struct {
 			Status struct {
 				ID   string `json:"id"`
@@ -186,14 +205,7 @@ func GetValue(w http.ResponseWriter, property []byte, column string, db *sql.DB)
 			} `json:"status"`
 		}
 		json.Unmarshal(property, &statusType)
-		switch statusType.Status.Name {
-		case "Done":
-			value = "done"
-		case "In progress":
-			value = "start"
-		default:
-			value = "default"
-		}
+		value = statusType.Status.Name 
 	default:
 		value = ""
 	}

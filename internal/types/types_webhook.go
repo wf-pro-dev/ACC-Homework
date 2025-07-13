@@ -1,7 +1,7 @@
 package types
 
 type NotionWebhookPayload struct {
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 	Authors []struct {
 		Id   string `json:"id"`
 		Type string `json:"type"`

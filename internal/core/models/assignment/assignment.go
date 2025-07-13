@@ -178,7 +178,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 	fmt.Println("")
 }
 
-func Get_Assignment_byId(id uint, db *gorm.DB) *Assignment {
+func Get_Assignment_byId(id uint, db *gorm.DB) (*Assignment, error) {
     assignment := &Assignment{}
     err := db.Preload("User").
               Preload("Course").
@@ -188,22 +188,22 @@ func Get_Assignment_byId(id uint, db *gorm.DB) *Assignment {
               First(assignment).Error
 
     if err != nil {
-        return nil
+        return nil, err
     }
-    return assignment
+    return assignment, nil
 }
 
-func Get_Assignment_byNotionID(notion_id string, db *gorm.DB) *Assignment {
+func Get_Assignment_byNotionID(notion_id string, db *gorm.DB) ( *Assignment, error ){
 
 	assignment := &Assignment{}
 	err := db.Where("notion_id = ?", notion_id).First(assignment).Error
 
 	if err != nil {
 		log.Fatal(err)
-		return nil
+		return nil, err
 	}
 
-	return assignment
+	return assignment, nil
 }
 
 // ToMap converts the Assignment struct to a map[string]string
