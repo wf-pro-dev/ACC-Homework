@@ -11,7 +11,49 @@ import (
 	"github.com/williamfotso/acc/internal/core/models"
 	"gorm.io/gorm"
 )
+func GetAssignmentHandler(w http.ResponseWriter, r *http.Request) {
+	userIDVal := r.Context().Value("user_id")
+        if userIDVal == nil {
+                PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
+                return
+        }
 
+        userID, ok := userIDVal.(uint)
+        if !ok {
+                PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
+                return
+        }
+
+        dbVal := r.Context().Value("db")
+        if dbVal == nil {
+                PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+                return
+        }
+
+        db, ok := dbVal.(*gorm.DB)
+        if !ok {
+                PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+                return
+        }
+
+	var assignments []assignment.Assignment
+	if err := db.Where("user_id = ?", userID).Find(&assignments).Error ; err != nil {
+		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error getting assignment for user id = %d : %s",userID, err))
+                return
+	}
+	
+	var assignmentsMap []map[string]string
+	for _, a := range assignments {
+		assignmentsMap = append(assignmentsMap, a.ToMap())
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(map[string]interface{}{
+                "message": "User's Assignments retrieved successfully",
+                "assignments":    assignmentsMap,
+        })
+
+}
 func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	userIDVal := r.Context().Value("user_id")
@@ -126,7 +168,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
         // Return response
         w.Header().Set("Content-Type", "application/json")
         json.NewEncoder(w).Encode(map[string]interface{}{
-                "message": "User retrieved successfully",
+                "message": "Assignment created successfully",
                 "assignment":    assignmentMap,
         })
 

@@ -1,21 +1,17 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
-	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/services/network"
-	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 
 
-func GetAssignments() ([]map[string]string, error) {
+func GetCourses() ([]map[string]string, error) {
 
 	/*userID := uint(1)
 	db, err := local.GetLocalDB(userID)
@@ -47,7 +43,7 @@ func GetAssignments() ([]map[string]string, error) {
 	}*/
 	var response struct {
 		Message		string			`json:"message"`
-		Assignments	[]map[string]string	`json:"assignments"`
+		Courses		[]map[string]string	`json:"courses"`
 		Error		string			`json:"error,omitempty"`
 	}
 
@@ -60,7 +56,7 @@ func GetAssignments() ([]map[string]string, error) {
 			return nil, err
 		}
 
-		resp, err := new_client.Get("https://newsroom.dedyn.io/acc-homework/assignment/get")
+		resp, err := new_client.Get("https://newsroom.dedyn.io/acc-homework/course/get")
 	
 
 		if err != nil {
@@ -83,7 +79,7 @@ func GetAssignments() ([]map[string]string, error) {
 			return nil, fmt.Errorf(response.Error)
 		}
 
-		if response.Assignments == nil {
+		if response.Courses == nil {
 			return nil, fmt.Errorf("no assignment data in response")
 		}
 
@@ -101,9 +97,9 @@ func GetAssignments() ([]map[string]string, error) {
 		return nil, fmt.Errorf("commit failed: %w", err)
 	}*/
 
-	return response.Assignments , nil
+	return response.Courses, nil
 }
-
+/*
 func CreateAssignment(assignmentData map[string]string) (map[string]string, error) {
 
 	userID := uint(1)
@@ -232,4 +228,4 @@ func UpdateAssignment(id, column, value string) error {
 	}
 
 	return nil
-}
+}*/

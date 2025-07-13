@@ -81,9 +81,11 @@ func StartServer() {
 	http.HandleFunc("/acc-homework/user", dbMiddleware(db,AuthMiddleware(GetUserHandler)))
 
 	http.HandleFunc("/acc-homework/assignment", dbMiddleware(db,AuthMiddleware(CreateAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment/get", dbMiddleware(db,AuthMiddleware(GetAssignmentHandler)))
 	http.HandleFunc("/acc-homework/assignment/update", dbMiddleware(db,AuthMiddleware(UpdateAssignmentHandler)))
 
-
+	http.HandleFunc("/acc-homework/course/get", dbMiddleware(db,AuthMiddleware(GetCourseHandler)))
+	
 	http.HandleFunc("/notion-webhooks/test", testHandler)
 	//http.HandleFunc("/notion-webhooks", notionWebhookHandler)
 	log.Println("Server listening on :3000...") // Changed from fmt
