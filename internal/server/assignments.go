@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/core/models/course"
 	"github.com/williamfotso/acc/internal/core/models"
 	"gorm.io/gorm"
 )
@@ -187,7 +188,13 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
                 return
         }
-
+	
+	tx := db.Begin()
+        defer func() {
+                if r := recover(); r != nil {
+                        tx.Rollback()
+                }
+        }()
 
 	var updateData struct {
 		ID 	string		`json:"id"`
@@ -207,13 +214,13 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 return
         }
 
-	a, err := assignment.Get_Assignment_byId(uint(int_id), db)
+	a, err := assignment.Get_Assignment_byId(uint(int_id), tx)
 	if err != nil {
                 PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to getting assignment: %s", err))
                 return
         }
 
-	if err := db.Exec(fmt.Sprintf("UPDATE assignments SET %s = ?, updated_at = ? WHERE id = ?",updateData.Column), 
+	if err := tx.Exec(fmt.Sprintf("UPDATE assignments SET %s = ?, updated_at = ? WHERE id = ?",updateData.Column), 
         	 updateData.Value, time.Now().Format(time.RFC3339), a.ID).Error; err != nil {
     		 PrintERROR(w, http.StatusInternalServerError,
                                         fmt.Sprintf("Error updating assignment in database: %s", err))
@@ -221,25 +228,54 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	value := updateData.Value
+	
 
+	//PrintLog(fmt.Sprintf("column : %s, value :%s, user id:%s", updateData.Column, value, dbVal.(string) ))
 	if updateData.Column == "course_code" {
-		value = a.Course.NotionID
+		//PrintLog(fmt.Sprintf("column : %s, value :%s, user id:%s", updateData.Column, value, dbVal.(string) ))
+		
+		userIDVal := r.Context().Value("user_id")
+       		if userIDVal == nil {
+                	PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
+                	return
+        	}
+
+
+		userID, ok := userIDVal.(uint)
+		if !ok {
+			PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
+			return
+		}
+
+		
+		c, err := course.Get_Course_byCode(value, strconv.Itoa(int(userID)), tx)
+		if err != nil {
+			PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to getting new course: %s", err))
+			return
+		}
+		PrintLog(fmt.Sprintf("Course %s",c.ToMap()))
+
+		value = c.NotionID
+		PrintLog(fmt.Sprintf("Course notion id: %s",value))
 	}
 
 	var obj map[string]string
 
 	if updateData.Column == "status_name" {
-		var status = models.Get_AssignmentStatus_byName(value, db)
+		var status = models.Get_AssignmentStatus_byName(value, tx)
 		obj = status.ToMap()
-	} else {
-		var t = models.Get_AssignmentType_byName(value, db)
+	} else if updateData.Column == "type_name" {
+		var t = models.Get_AssignmentType_byName(value, tx)
 		obj = t.ToMap()
 	}
-
+	
 	err = a.Update_Notion(updateData.Column,value , obj)
         if err != nil {
+		tx.Rollback()
                 PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error updating assignment in notion",err))
                 return
         }
+
+	tx.Commit()
 
 }

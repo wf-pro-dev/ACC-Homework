@@ -162,7 +162,7 @@ func (a *Assignment) Add(db *gorm.DB) (err error) {
 
 	return nil
 }
-
+/*
 func (a *Assignment) Update(col, value string, db *gorm.DB) (err error) {
 
 	err = db.Model(&Assignment{}).Where("id = ?", a.ID).Update(col, value).Error
@@ -176,7 +176,8 @@ func (a *Assignment) Update(col, value string, db *gorm.DB) (err error) {
 	assignment[col] = value
 
 	if col == "course_code" {
-		value = course.Get_Course_byCode(value, db).NotionID
+		c , _ := course.Get_Course_byCode(value, db)
+		value = c.NotionID
 	}
 
 	var obj map[string]string
@@ -196,7 +197,7 @@ func (a *Assignment) Update(col, value string, db *gorm.DB) (err error) {
 
 	return nil
 }
-
+*/
 func (a *Assignment) Delete(db *gorm.DB) (err error) {
 
 	err = db.Delete(a).Error
