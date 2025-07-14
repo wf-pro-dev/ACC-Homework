@@ -182,6 +182,7 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		}
 
 		a.NotionID = response.Assignment["notion_id"].(string)
+		a.RemoteID = response.Assignment["id"].(uint)
 		a.SyncStatus = assignment.SyncStatusSynced
 
 	} else {
@@ -201,34 +202,75 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 }
 
 func UpdateAssignment(id, column, value string) error {
-	new_client, err := NewClient()
+
+	userID, err := local.GetCurrentUserID()
 	if err != nil {
 		return err
 	}
 
-	updateData := map[string]interface{}{
-		"id":     id,
-		"value":  value,
-		"column": column,
-	}
-
-	jsonData, _ := json.Marshal(updateData)
-
-	resp, err := new_client.Post(
-		"https://newsroom.dedyn.io/acc-homework/assignment/update",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-
+	db, err := local.GetLocalDB(userID)
 	if err != nil {
 		return err
 	}
 
-	defer resp.Body.Close()
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
+	var local_assignment assignment.LocalAssignment
+	err = tx.First(&local_assignment, "remote_id = ?", id).Error
+	if err != nil {
+		return err
+	}
+
+	err = tx.Model(&local_assignment).Update(column, value).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if network.IsOnline() {
+
+		new_client, err := NewClient()
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		updateData := map[string]interface{}{
+			"id":     id,
+			"value":  value,
+			"column": column,
+		}
+
+		jsonData, _ := json.Marshal(updateData)
+
+		resp, err := new_client.Post(
+			"https://newsroom.dedyn.io/acc-homework/assignment/update",
+			"application/json",
+			bytes.NewBuffer(jsonData),
+		)
+
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			tx.Rollback()
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
+		}
+	}
+
+	err = tx.Commit().Error
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -51,8 +51,8 @@ func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirectiv
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	assignment := assignment.LocalAssignment{}
-	err = db.First(&assignment, assignment_id_int).Error
+	var assignment assignment.LocalAssignment
+	err = db.First(&assignment, "remote_id = ?", assignment_id_int).Error
 	if err != nil {
 		fmt.Println("Error getting assignment:", err)
 		return nil, cobra.ShellCompDirectiveError
@@ -105,8 +105,8 @@ func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 		}
 
 		baseName := filepath.Base(wd)
-		query := fmt.Sprintf("SELECT id, title FROM local_assignments WHERE course_code = '%s' ORDER BY id ASC", baseName)
-		var assignments []assignment.Assignment
+		query := fmt.Sprintf("SELECT remote_id, title FROM local_assignments WHERE course_code = '%s' ORDER BY remote_id ASC", baseName)
+		var assignments []assignment.LocalAssignment
 		err = db.Raw(query).Scan(&assignments).Error
 		if err != nil {
 			fmt.Println("[ERROR] Query error:", err)
@@ -115,7 +115,7 @@ func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 
 		var assignmentIDs []string
 		for _, assignment := range assignments {
-			completion := fmt.Sprintf("%d\t%s", assignment.ID, assignment.Title)
+			completion := fmt.Sprintf("%d\t%s", assignment.RemoteID, assignment.Title)
 			assignmentIDs = append(assignmentIDs, completion)
 		}
 		return assignmentIDs, cobra.ShellCompDirectiveNoFileComp

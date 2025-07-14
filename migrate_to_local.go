@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
-
 
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/core/models/course"
@@ -36,6 +36,13 @@ func main() {
 		}
 	}()
 
+	// 2. Seed initial data
+	if err := local.SeedInitialData(tx); err != nil {
+		tx.Rollback()
+		log.Fatalf("Failed to seed initial data: %v", err)
+	}
+	fmt.Println("✅ Initial data seeded")
+
 	// 3. Migrate courses
 	if err := migrateCourses(tx); err != nil {
 		tx.Rollback()
@@ -53,7 +60,6 @@ func main() {
 	fmt.Println("✅ Migration completed successfully")
 }
 
-
 func migrateCourses(localDB *gorm.DB) error {
 
 	remoteCourses, err := client.GetCourses()
@@ -63,7 +69,12 @@ func migrateCourses(localDB *gorm.DB) error {
 	}
 
 	for _, rc := range remoteCourses {
+		remote_id, err := strconv.Atoi(rc["id"])
+		if err != nil {
+			return fmt.Errorf("Error formating remote_id : %s", err)
+		}
 		localCourse := course.LocalCourse{
+			RemoteID:   uint(remote_id),
 			Code:       rc["code"],
 			Name:       rc["name"],
 			NotionID:   rc["notion_id"],
@@ -97,7 +108,13 @@ func migrateAssignments(localDB *gorm.DB) error {
 			return fmt.Errorf("Error formating deadline : %s", err)
 		}
 
+		remote_id, err := strconv.Atoi(ra["id"])
+		if err != nil {
+			return fmt.Errorf("Error formating remote_id : %s", err)
+		}
+
 		localAssignment := assignment.LocalAssignment{
+			RemoteID:   uint(remote_id),
 			Title:      ra["title"],
 			Todo:       ra["todo"],
 			Deadline:   deadline,
