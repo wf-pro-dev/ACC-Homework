@@ -1,6 +1,11 @@
 package assignment
 
 import (
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/williamfotso/acc/internal/core/models"
@@ -34,7 +39,7 @@ type LocalAssignment struct {
 
 func (a *LocalAssignment) ToMap() map[string]string {
 	return map[string]string{
-
+		"id":          strconv.Itoa(int(a.ID)),
 		"course_code": a.CourseCode,
 		"title":       a.Title,
 		"type_name":   a.TypeName,
@@ -43,4 +48,101 @@ func (a *LocalAssignment) ToMap() map[string]string {
 		"status_name": a.StatusName,
 		"link":        a.Link,
 	}
+}
+
+func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filter, up_to_date bool, db *gorm.DB) {
+
+	col_length := 15
+	query := fmt.Sprintf("SELECT %s FROM local_assignments WHERE course_code='%v'", strings.Join(columns, ","), course_code)
+
+	for _, filter := range filters {
+		query += fmt.Sprintf(" AND %s='%v'", filter.Column, filter.Value)
+	}
+
+	if up_to_date {
+		today := time.Now().Format(time.DateOnly)
+		query += fmt.Sprintf(" AND deadline > '%v'", today)
+	}
+	query += " ORDER BY deadline ASC"
+	assignments := []LocalAssignment{}
+	err := db.Raw(query).Scan(&assignments).Error
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(assignments) == 0 {
+		fmt.Println("No assignments found")
+		os.Exit(0)
+	}
+
+	// Create column headers based on requested columns
+	headers := make([]string, len(columns))
+	for i, col := range columns {
+		// Convert column names to display headers
+		switch col {
+		case "id":
+			headers[i] = "ID"
+		case "type_name":
+			headers[i] = "Type"
+		case "deadline":
+			headers[i] = "Deadline"
+		case "title":
+			headers[i] = "Title"
+		case "todo":
+			headers[i] = "Todo"
+		case "course_code":
+			headers[i] = "Course Code"
+		case "status_name":
+			headers[i] = "Status"
+		default:
+			headers[i] = col
+		}
+	}
+
+	// Print top border
+	fmt.Print("┌")
+	for range columns {
+		fmt.Printf("%-*s┬", col_length, strings.Repeat("-", col_length+2))
+	}
+	fmt.Println("")
+
+	// Print header row
+	fmt.Print("│")
+	for _, header := range headers {
+		fmt.Printf(" %-*s │", col_length, header)
+	}
+	fmt.Println("")
+
+	// Print separator
+	fmt.Print("├")
+	for range columns {
+		fmt.Printf("%-*s┼", col_length, strings.Repeat("-", col_length+2))
+	}
+	fmt.Println("")
+
+	// Print data rows
+	for _, assignment := range assignments {
+		obj_assign := assignment.ToMap()
+		fmt.Print("│")
+		for _, col := range columns {
+			value := obj_assign[col]
+			if col == "deadline" {
+				value = value[:10]
+			}
+
+			// Truncate or pad to exactly 10 characters
+			if len(value) > 15 && len(columns) > 2 {
+				value = value[:12] + "..."
+			}
+			fmt.Printf(" %-*s │", col_length, value)
+		}
+		fmt.Println("")
+	}
+
+	// Print bottom border
+	fmt.Print("└")
+	for range columns {
+		fmt.Printf("%-*s┴", col_length, strings.Repeat("-", col_length+2))
+	}
+	fmt.Println("")
 }

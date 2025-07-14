@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/williamfotso/acc/assignment"
-	"github.com/williamfotso/acc/assignment/notion/types"
-	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/storage/local"
+	"github.com/williamfotso/acc/internal/types"
 )
 
 func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
@@ -30,34 +31,47 @@ func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
 	}
 }
 
-/*func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirective) {
+func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirective) {
 
-	db, err := database.GetDB()
+	userID, err := local.GetCurrentUserID()
 	if err != nil {
+		fmt.Println("Error getting current user ID:", err)
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	assignment := assignment.Get_Assignment_byId(assignment_id, db)
-
-	deadline_date, err := time.Parse(time.DateOnly, assignment.Deadline[:10])
+	db, err := local.GetLocalDB(userID)
 	if err != nil {
+		fmt.Println("Error getting local DB:", err)
 		return nil, cobra.ShellCompDirectiveError
 	}
-	a_day_before_date := deadline_date.AddDate(0, 0, -1)
+
+	assignment_id_int, err := strconv.Atoi(assignment_id)
+	if err != nil {
+		fmt.Println("Error converting assignment ID to int:", err)
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	assignment, err := assignment.Get_Assignment_byId(uint(assignment_id_int), db)
+	if err != nil {
+		fmt.Println("Error getting assignment:", err)
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	a_day_before_date := assignment.Deadline.AddDate(0, 0, -1)
 	a_day_before := a_day_before_date.Format(time.DateOnly)
 
-	a_day_after_date := deadline_date.AddDate(0, 0, 1)
+	a_day_after_date := assignment.Deadline.AddDate(0, 0, 1)
 	a_day_after := a_day_after_date.Format(time.DateOnly)
 
-	next_week := deadline_date.AddDate(0, 0, 7).Format(time.DateOnly)
+	next_week := assignment.Deadline.AddDate(0, 0, 7).Format(time.DateOnly)
 
-	deadline_n_day := int(deadline_date.Weekday())
+	deadline_n_day := int(assignment.Deadline.Weekday())
 	diff := 5 - deadline_n_day
 	if diff <= 0 {
 		diff = 7 + diff
 	}
 
-	next_friday := deadline_date.AddDate(0, 0, diff).Format(time.DateOnly)
+	next_friday := assignment.Deadline.AddDate(0, 0, diff).Format(time.DateOnly)
 
 	return []string{
 		fmt.Sprintf("%s\t%s", a_day_before, fmt.Sprintf("%s, a day before", a_day_before_date.Weekday())),
@@ -66,10 +80,16 @@ func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
 		fmt.Sprintf("%s\t%s", next_week, "A week from deadline"),
 	}, cobra.ShellCompDirectiveNoFileComp
 
-}*/
+}
 
 func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	db, err := database.GetDB()
+	userID, err := local.GetCurrentUserID()
+	if err != nil {
+		fmt.Println("Error getting current user ID:", err)
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	db, err := local.GetLocalDB(userID)
 	if err != nil {
 		fmt.Println("[ERROR] DB connection error:", err)
 		return nil, cobra.ShellCompDirectiveError
@@ -84,8 +104,9 @@ func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 		}
 
 		baseName := filepath.Base(wd)
-		query := fmt.Sprintf("SELECT id, title FROM assignements WHERE course_code = '%s' ORDER BY id ASC", baseName)
-		assignments, err := database.GetHandler(query, db)
+		query := fmt.Sprintf("SELECT id, title FROM local_assignments WHERE course_code = '%s' ORDER BY id ASC", baseName)
+		var assignments []map[string]string
+		err = db.Raw(query).Scan(&assignments).Error
 		if err != nil {
 			fmt.Println("[ERROR] Query error:", err)
 			return nil, cobra.ShellCompDirectiveError

@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/williamfotso/acc/cmd/completion"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/storage/local"
 	"github.com/williamfotso/acc/internal/types"
-	//"github.com/williamfotso/acc/cmd/completion"
-	//"github.com/williamfotso/acc/database"
 )
 
 // splitCommaSeparated splits a string by commas and trims whitespace
@@ -49,7 +49,7 @@ func CourseError(message string, COURSES_CODES []string) {
 	fmt.Println(message)
 	fmt.Println("Available courses:")
 	for _, code := range COURSES_CODES {
-		fmt.Printf("  %s\n", code )
+		fmt.Printf("  %s\n", code)
 	}
 	os.Exit(1)
 }
@@ -72,30 +72,30 @@ func handleFlag(arg string) (columns []string, filters []assignment.Filter) {
 
 var courseCode string
 var filter string
-//var up_to_date bool
+var up_to_date bool
 var include []string
 var exclude []string
 
 func init() {
 	// Handle --course -c flag
 	lsCmd.Flags().StringVarP(&courseCode, "course", "c", "", "Course to list assignments for")
-	/*_ = lsCmd.RegisterFlagCompletionFunc("course", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	_ = lsCmd.RegisterFlagCompletionFunc("course", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return completion.CourseCodeCompletion()
-	})*/
+	})
 
 	lsCmd.Flags().BoolP("up-to-date", "d", false, "List only assignments that are up to date")
 
 	// Handle --filter -f flag
 	lsCmd.Flags().StringVarP(&filter, "filter", "f", "", "Filter assignments by a specific column and value")
-	//_ = lsCmd.RegisterFlagCompletionFunc("filter", completion.CompleteFilterFlag)
+	_ = lsCmd.RegisterFlagCompletionFunc("filter", completion.CompleteFilterFlag)
 
 	// Handle --include -i flag
 	lsCmd.Flags().StringArrayVarP(&include, "include", "i", []string{}, "Include columns to display")
-	//_ = lsCmd.RegisterFlagCompletionFunc("include", completion.CompleteMultiColumn)
+	_ = lsCmd.RegisterFlagCompletionFunc("include", completion.CompleteMultiColumn)
 
 	// Handle --exclude -e flag
 	lsCmd.Flags().StringArrayVarP(&exclude, "exclude", "e", []string{}, "Exclude columns to display")
-	//_ = lsCmd.RegisterFlagCompletionFunc("exclude", completion.CompleteMultiColumn)
+	_ = lsCmd.RegisterFlagCompletionFunc("exclude", completion.CompleteMultiColumn)
 
 	rootCmd.AddCommand(lsCmd)
 }
@@ -106,18 +106,22 @@ var lsCmd = &cobra.Command{
 	Long:  `List all assignments for a course`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// Get database connection
-		/*db, err := database.GetDB()
+		userID, err := local.GetCurrentUserID()
 		if err != nil {
-			log.Fatal(err)
-		}*/
+			log.Fatalf("Failed to get current user ID: %v", err)
+		}
+
+		db, err := local.GetLocalDB(userID)
+		if err != nil {
+			log.Fatalf("Failed to create local DB: %v", err)
+		}
 
 		// Get the courses codes from the database
-		COURSES_CODES := []string{"MATH-2412, ENGL-2311, GOVT-1401, HIST-1301"}
-		/*database.GetHandler("SELECT code FROM courses", db)
+		var COURSES_CODES []string
+		err = db.Raw("SELECT code FROM local_courses").Scan(&COURSES_CODES).Error
 		if err != nil {
 			log.Fatal(err)
-		}*/
+		}
 
 		// Get the current working directory to get the course name
 		wd, err := os.Getwd()
@@ -144,10 +148,10 @@ var lsCmd = &cobra.Command{
 		}
 
 		// Get the up-to-date flag
-		/*up_to_date, err := cmd.Flags().GetBool("up-to-date")
+		up_to_date, err := cmd.Flags().GetBool("up-to-date")
 		if err != nil {
 			log.Fatal(err)
-		}*/
+		}
 
 		// Handle the filter flag
 		var filters []assignment.Filter
@@ -188,7 +192,7 @@ var lsCmd = &cobra.Command{
 			}
 		}
 
-		//assignment.GetAssignmentsbyCourse(courseName, columns, filters, up_to_date, db)
+		assignment.GetAssignmentsbyCourse(courseCode, columns, filters, up_to_date, db)
 
 	},
 }
