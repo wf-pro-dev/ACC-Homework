@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/williamfotso/acc/internal/core/models/course"
 	"github.com/williamfotso/acc/internal/storage/local"
 	"github.com/williamfotso/acc/internal/types"
 )
@@ -22,8 +23,8 @@ func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	var courses []map[string]string
-	err = db.Raw("SELECT code,name FROM local_courses").Scan(&courses).Error
+	var courses []course.Course
+	err = db.Raw("SELECT code, name FROM local_courses").Scan(&courses).Error
 	if err != nil {
 		fmt.Println("Error getting courses:", err)
 		return nil, cobra.ShellCompDirectiveError
@@ -31,7 +32,7 @@ func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 
 	course_codes := []string{}
 	for _, course := range courses {
-		completion := fmt.Sprintf("%s\t%s", course["code"], course["name"])
+		completion := fmt.Sprintf("%s\t%s", course.Code, course.Name)
 		course_codes = append(course_codes, completion)
 	}
 

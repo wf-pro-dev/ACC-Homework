@@ -13,8 +13,6 @@ import (
 	"github.com/williamfotso/acc/internal/storage/local"
 )
 
-
-
 func GetAssignments() ([]map[string]string, error) {
 
 	/*userID := uint(1)
@@ -46,9 +44,9 @@ func GetAssignments() ([]map[string]string, error) {
 		StatusName: assignmentData["status_name"],
 	}*/
 	var response struct {
-		Message		string			`json:"message"`
-		Assignments	[]map[string]string	`json:"assignments"`
-		Error		string			`json:"error,omitempty"`
+		Message     string              `json:"message"`
+		Assignments []map[string]string `json:"assignments"`
+		Error       string              `json:"error,omitempty"`
 	}
 
 	isOnline := network.IsOnline()
@@ -61,7 +59,6 @@ func GetAssignments() ([]map[string]string, error) {
 		}
 
 		resp, err := new_client.Get("https://newsroom.dedyn.io/acc-homework/assignment/get")
-	
 
 		if err != nil {
 			return nil, err
@@ -74,7 +71,6 @@ func GetAssignments() ([]map[string]string, error) {
 			return nil, fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
 		}
 
-
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 			return nil, fmt.Errorf("failed to decode response: %w", err)
 		}
@@ -84,9 +80,8 @@ func GetAssignments() ([]map[string]string, error) {
 		}
 
 		if response.Assignments == nil {
-			return nil, fmt.Errorf("no assignment data in response")
+			return make([]map[string]string, 0), nil
 		}
-
 
 	} /*else {
 		a.SyncStatus = assignment.SyncStatusPending
@@ -101,12 +96,16 @@ func GetAssignments() ([]map[string]string, error) {
 		return nil, fmt.Errorf("commit failed: %w", err)
 	}*/
 
-	return response.Assignments , nil
+	return response.Assignments, nil
 }
 
 func CreateAssignment(assignmentData map[string]string) (map[string]string, error) {
 
-	userID := uint(1)
+	userID, err := local.GetCurrentUserID()
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := local.GetLocalDB(userID)
 	if err != nil {
 		return nil, err

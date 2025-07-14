@@ -2,6 +2,7 @@ package local
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -56,21 +57,25 @@ func GetCurrentUserID() (uint, error) {
 	defer credLock.Unlock()
 
 	if credentials != nil {
+		fmt.Printf("Current user ID: %d\n", credentials.UserID)
 		return credentials.UserID, nil
 	}
 
 	path, err := getCredsPath()
 	if err != nil {
+		fmt.Printf("Failed to get credentials path: %v\n", err)
 		return 0, err
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
+		fmt.Printf("Failed to read credentials file: %v\n", err)
 		return 0, err
 	}
 
 	var creds LocalCredentials
 	if err := json.Unmarshal(data, &creds); err != nil {
+		fmt.Printf("Failed to unmarshal credentials: %v\n", err)
 		return 0, err
 	}
 

@@ -41,9 +41,9 @@ func addAssignment() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Println("\n=== Create New Assignment ===")
-	
+
 	assignmentData := map[string]string{
-		
+
 		"course_code": promptInput(scanner, "Course Code"),
 		"title":       promptInput(scanner, "Title"),
 		"type_name":   promptInput(scanner, "Type (HW/Exam)"),
@@ -63,8 +63,25 @@ func addAssignment() {
 }
 
 func addCourse() {
-	fmt.Println("Course creation not yet implemented")
-	os.Exit(1)
+	scanner := bufio.NewScanner(os.Stdin)
+
+	fmt.Println("\n=== Create New Course ===")
+
+	courseData := map[string]string{
+
+		"code":        promptInput(scanner, "Course Code"),
+		"name":        promptInput(scanner, "Name"),
+		"duration":    promptInput(scanner, "Duration (D,D HH:MM-HH:MM)"),
+		"room_number": promptInput(scanner, "Room Number (e.g. 101 or Online)"),
+	}
+
+	fmt.Println("\nCreating course...")
+	_, err := client.CreateCourse(courseData)
+	if err != nil {
+		log.Fatalf("Error creating course: %v", err)
+	}
+
+	fmt.Printf("\n✅ Course created successfully!\n")
 }
 
 func promptInput(scanner *bufio.Scanner, prompt string) string {
@@ -88,12 +105,11 @@ func promptDate(scanner *bufio.Scanner, prompt string) string {
 }
 
 func convertToDBFormatWithLocation(dateStr string, loc *time.Location) (string, error) {
-    t, err := time.ParseInLocation(time.DateOnly, dateStr, loc)
-    if err != nil {
-        return "", err
-    }
+	t, err := time.ParseInLocation(time.DateOnly, dateStr, loc)
+	if err != nil {
+		return "", err
+	}
 
-    // Convert to RFC3339 format with the specified location
-    return t.Format(time.RFC3339), nil
+	// Convert to RFC3339 format with the specified location
+	return t.Format(time.RFC3339), nil
 }
-

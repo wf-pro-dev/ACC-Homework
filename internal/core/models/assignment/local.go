@@ -56,7 +56,18 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 	query := fmt.Sprintf("SELECT %s FROM local_assignments WHERE course_code='%v'", strings.Join(columns, ","), course_code)
 
 	for _, filter := range filters {
-		query += fmt.Sprintf(" AND %s='%v'", filter.Column, filter.Value)
+		if filter.Column == "deadline" {
+			deadline, err := time.Parse(time.DateOnly, filter.Value)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			t := time.Now()
+			deadline_str := deadline.Format("2006-01-02 15:04:05") + t.Format("-07:00")
+			query += fmt.Sprintf(" AND deadline = '%v'", deadline_str)
+		} else {
+			query += fmt.Sprintf(" AND %s='%v'", filter.Column, filter.Value)
+		}
 	}
 
 	if up_to_date {

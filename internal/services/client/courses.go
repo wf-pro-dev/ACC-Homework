@@ -1,15 +1,17 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/williamfotso/acc/internal/core/models/course"
 	"github.com/williamfotso/acc/internal/services/network"
+	"github.com/williamfotso/acc/internal/storage/local"
 )
-
-
 
 func GetCourses() ([]map[string]string, error) {
 
@@ -42,9 +44,9 @@ func GetCourses() ([]map[string]string, error) {
 		StatusName: assignmentData["status_name"],
 	}*/
 	var response struct {
-		Message		string			`json:"message"`
-		Courses		[]map[string]string	`json:"courses"`
-		Error		string			`json:"error,omitempty"`
+		Message string              `json:"message"`
+		Courses []map[string]string `json:"courses"`
+		Error   string              `json:"error,omitempty"`
 	}
 
 	isOnline := network.IsOnline()
@@ -57,7 +59,6 @@ func GetCourses() ([]map[string]string, error) {
 		}
 
 		resp, err := new_client.Get("https://newsroom.dedyn.io/acc-homework/course/get")
-	
 
 		if err != nil {
 			return nil, err
@@ -70,19 +71,17 @@ func GetCourses() ([]map[string]string, error) {
 			return nil, fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
 		}
 
-
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 			return nil, fmt.Errorf("failed to decode response: %w", err)
 		}
 
 		if response.Error != "" {
-			return nil, fmt.Errorf(response.Error)
+			return nil, errors.New(response.Error)
 		}
 
 		if response.Courses == nil {
-			return nil, fmt.Errorf("no assignment data in response")
+			return nil, errors.New("no assignment data in response")
 		}
-
 
 	} /*else {
 		a.SyncStatus = assignment.SyncStatusPending
@@ -99,10 +98,14 @@ func GetCourses() ([]map[string]string, error) {
 
 	return response.Courses, nil
 }
-/*
-func CreateAssignment(assignmentData map[string]string) (map[string]string, error) {
 
-	userID := uint(1)
+func CreateCourse(courseData map[string]string) (map[string]string, error) {
+
+	userID, err := local.GetCurrentUserID()
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := local.GetLocalDB(userID)
 	if err != nil {
 		return nil, err
@@ -115,20 +118,12 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		}
 	}()
 
-	deadline, err := time.Parse(time.RFC3339, assignmentData["deadline"])
-	if err != nil {
-		return nil, err
-	}
-
 	// Create local assignment
-	a := assignment.LocalAssignment{
-		Title:      assignmentData["title"],
-		Todo:       assignmentData["todo"],
-		Deadline:   deadline,
-		Link:       assignmentData["link"],
-		CourseCode: assignmentData["course_code"],
-		TypeName:   assignmentData["type_name"],
-		StatusName: assignmentData["status_name"],
+	c := course.LocalCourse{
+		Code:       courseData["code"],
+		Name:       courseData["name"],
+		Duration:   courseData["duration"],
+		RoomNumber: courseData["room_number"],
 	}
 
 	isOnline := network.IsOnline()
@@ -140,10 +135,10 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 			return nil, err
 		}
 
-		jsonData, _ := json.Marshal(assignmentData)
+		jsonData, _ := json.Marshal(courseData)
 
 		resp, err := new_client.Post(
-			"https://newsroom.dedyn.io/acc-homework/assignment",
+			"https://newsroom.dedyn.io/acc-homework/course",
 			"application/json",
 			bytes.NewBuffer(jsonData),
 		)
@@ -160,9 +155,9 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		}
 
 		var response struct {
-			Message    string                 `json:"message"`
-			Assignment map[string]interface{} `json:"assignment"`
-			Error      string                 `json:"error,omitempty"`
+			Message string            `json:"message"`
+			Course  map[string]string `json:"course"`
+			Error   string            `json:"error,omitempty"`
 		}
 
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -170,21 +165,21 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		}
 
 		if response.Error != "" {
-			return nil, fmt.Errorf(response.Error)
+			return nil, errors.New(response.Error)
 		}
 
-		if response.Assignment == nil {
-			return nil, fmt.Errorf("no assignment data in response")
+		if response.Course == nil {
+			return nil, errors.New("no course data in response")
 		}
 
-		a.NotionID = response.Assignment["notion_id"].(string)
-		a.SyncStatus = assignment.SyncStatusSynced
+		c.NotionID = response.Course["notion_id"]
+		c.SyncStatus = course.SyncStatusSynced
 
 	} else {
-		a.SyncStatus = assignment.SyncStatusPending
+		c.SyncStatus = course.SyncStatusPending
 	}
 
-	if err := tx.Create(&a).Error; err != nil {
+	if err := tx.Create(&c).Error; err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("local create failed: %w", err)
 	}
@@ -193,9 +188,10 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		return nil, fmt.Errorf("commit failed: %w", err)
 	}
 
-	return a.ToMap(), nil
+	return c.ToMap(), nil
 }
 
+/*
 func UpdateAssignment(id, column, value string) error {
 	new_client, err := NewClient()
 	if err != nil {
