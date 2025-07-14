@@ -89,6 +89,18 @@ func (c *Course) GetDuration() string {
 	return c.Duration
 }
 
+
+func Get_Course_byId(id uint, db *gorm.DB) (*Course, error) {
+	course := &Course{}
+	err := db.Preload("User").
+		Where("id = ?", id).
+		First(course).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return course, nil
+}
 func Get_Course_byCode(code string, db *gorm.DB) *Course {
 	course := &Course{}
 	err := db.Where("code = ?", code).First(course).Error
@@ -125,38 +137,3 @@ func (c *Course) ToMap() map[string]string {
 		"updated_at":  c.UpdatedAt.Format(time.DateOnly),
 	}
 }
-
-func (c *Course) Add(db *gorm.DB) (err error) {
-
-	course := c.ToMap()
-
-	err = db.Create(c).Error
-
-	if err != nil {
-		log.Fatalln("Error adding course to database: ", err)
-		return err
-	}
-
-	notion_id, err_notion := Add_Notion(course)
-
-	if err_notion != nil {
-		log.Fatalln("Error adding course to Notion: ", err_notion)
-		return err_notion
-	}
-
-	var lastVal int
-	err = db.Raw("SELECT MAX(id) FROM courses").Scan(&lastVal).Error
-	if err != nil {
-		log.Fatalln("Error getting course id: ", err)
-		return err
-	}
-
-	err = db.Model(&Course{}).Where("id = ?", lastVal+1).Update("notion_id", notion_id).Error
-	if err != nil {
-		log.Fatalln("Error updating course: ", err)
-		return err
-	}
-
-	return nil
-}
-
