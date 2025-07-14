@@ -5,8 +5,9 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
-	"github.com/williamfotso/acc/internal/types"
+	"github.com/williamfotso/acc/cmd/completion"
 	"github.com/williamfotso/acc/internal/services/client"
+	"github.com/williamfotso/acc/internal/types"
 	//"github.com/williamfotso/acc/cmd/completion"
 )
 
@@ -28,7 +29,7 @@ var editCmd = &cobra.Command{
 	Use:               "edit",
 	Short:             "Edit an existing assignment in the ACC Homework tracker.",
 	Long:              `Edit an existing assignment in the ACC Homework tracker.`,
-	//ValidArgsFunction: completion.EditCompletion,
+	ValidArgsFunction: completion.EditCompletion,
 	Args: func(cmd *cobra.Command, args []string) error {
 
 		/*db, DBerr := database.GetDB()

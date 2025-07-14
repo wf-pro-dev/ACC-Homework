@@ -44,11 +44,9 @@ func GetAssignments() ([]map[string]string, error) {
 		StatusName: assignmentData["status_name"],
 	}*/
 	var response struct {
-
 		Message     string              `json:"message"`
 		Assignments []map[string]string `json:"assignments"`
 		Error       string              `json:"error,omitempty"`
-
 	}
 
 	isOnline := network.IsOnline()
@@ -85,7 +83,6 @@ func GetAssignments() ([]map[string]string, error) {
 			return make([]map[string]string, 0), nil
 		}
 
-
 	} /*else {
 		a.SyncStatus = assignment.SyncStatusPending
 	}
@@ -98,7 +95,6 @@ func GetAssignments() ([]map[string]string, error) {
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("commit failed: %w", err)
 	}*/
-
 
 	return response.Assignments, nil
 
@@ -219,7 +215,7 @@ func UpdateAssignment(id, column, value string) error {
 	jsonData, _ := json.Marshal(updateData)
 
 	resp, err := new_client.Post(
-		"http://localhost:3000/acc-homework/assignment/update",
+		"https://newsroom.dedyn.io/acc-homework/assignment/update",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
