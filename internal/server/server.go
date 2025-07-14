@@ -84,6 +84,7 @@ func StartServer() {
 	http.HandleFunc("/acc-homework/assignment/get", dbMiddleware(db,AuthMiddleware(GetAssignmentHandler)))
 	http.HandleFunc("/acc-homework/assignment/update", dbMiddleware(db,AuthMiddleware(UpdateAssignmentHandler)))
 
+	http.HandleFunc("/acc-homework/course", dbMiddleware(db,AuthMiddleware(CreateCourseHandler)))
 	http.HandleFunc("/acc-homework/course/get", dbMiddleware(db,AuthMiddleware(GetCourseHandler)))
 	
 	http.HandleFunc("/notion-webhooks/test", testHandler)
