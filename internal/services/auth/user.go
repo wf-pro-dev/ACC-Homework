@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,7 +38,7 @@ func GetUser() (map[string]interface{}, error) {
 	}
 
 	if response.Error != "" {
-		return nil, fmt.Errorf(response.Error)
+		return nil, errors.New(response.Error)
 	}
 
 	if response.User == nil {

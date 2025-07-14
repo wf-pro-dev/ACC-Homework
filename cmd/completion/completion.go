@@ -4,21 +4,28 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/williamfotso/acc/internal/storage/local"
 	"github.com/williamfotso/acc/internal/types"
-//	"github.com/williamfotso/acc/database"
 )
 
-/*func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
+func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 
-	db, err := database.GetDB()
+	userID, err := local.GetCurrentUserID()
 	if err != nil {
-		fmt.Println("DEBUG: DB error:", err)
+		fmt.Println("Error getting current user ID:", err)
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	courses, err := database.GetHandler("SELECT code,name FROM courses", db)
+	db, err := local.GetLocalDB(userID)
 	if err != nil {
-		fmt.Println("DEBUG: Query error:", err)
+		fmt.Println("Error getting local DB:", err)
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	var courses []map[string]string
+	err = db.Raw("SELECT code,name FROM local_courses").Scan(&courses).Error
+	if err != nil {
+		fmt.Println("Error getting courses:", err)
 		return nil, cobra.ShellCompDirectiveError
 	}
 
@@ -29,7 +36,7 @@ import (
 	}
 
 	return course_codes, cobra.ShellCompDirectiveNoFileComp
-}*/
+}
 
 // CompleteColumns provides completion for column names
 func CompleteColumns() ([]string, cobra.ShellCompDirective) {
