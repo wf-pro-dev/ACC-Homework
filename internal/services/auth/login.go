@@ -69,24 +69,5 @@ func Login(username, password string) error {
 		// Continue anyway - this is non-fatal
 	}
 
-	db, err := local.GetLocalDB(uint(id))
-	if err != nil {
-		return err
-	}
-
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	if err := local.SeedInitialData(tx); err != nil {
-		tx.Rollback()
-		log.Fatalf("Failed to seed initial data: %v", err)
-	}
-
-	tx.Commit()
-
 	return client.SaveCookies(new_client.Jar.Cookies(nil))
 }

@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
-	course_codes, _ := completion.CourseCodeCompletion()
-	fmt.Println(course_codes)
+
+	deadline_completion, _ := completion.DeadlineCompletion("1")
+	fmt.Println(deadline_completion)
 }

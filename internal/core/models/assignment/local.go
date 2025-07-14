@@ -22,6 +22,7 @@ const (
 
 type LocalAssignment struct {
 	gorm.Model
+	RemoteID   uint   `gorm:"unique"` // Empty until synced
 	NotionID   string `gorm:"unique"` // Empty until synced
 	Title      string `gorm:"not null"`
 	Todo       string
@@ -40,6 +41,7 @@ type LocalAssignment struct {
 func (a *LocalAssignment) ToMap() map[string]string {
 	return map[string]string{
 		"id":          strconv.Itoa(int(a.ID)),
+		"remote_id":   strconv.Itoa(int(a.RemoteID)),
 		"course_code": a.CourseCode,
 		"title":       a.Title,
 		"type_name":   a.TypeName,

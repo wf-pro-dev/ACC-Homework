@@ -22,10 +22,10 @@ func ColumnValueCompletion(args []string) ([]string, cobra.ShellCompDirective) {
 	case "deadline":
 		assignment_id := args[0]
 		return DeadlineCompletion(assignment_id)
-	case "type":
+	case "type_name":
 		return []string{"HW", "Exam"}, cobra.ShellCompDirectiveNoFileComp
-	case "status":
-		return []string{"done", "start", "default"}, cobra.ShellCompDirectiveNoFileComp
+	case "status_name":
+		return []string{"Not started", "In progress", "Done"}, cobra.ShellCompDirectiveNoFileComp
 	default:
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -51,7 +51,8 @@ func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirectiv
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	assignment, err := assignment.Get_Assignment_byId(uint(assignment_id_int), db)
+	var assignment assignment.LocalAssignment
+	err = db.First(&assignment, "remote_id = ?", assignment_id_int).Error
 	if err != nil {
 		fmt.Println("Error getting assignment:", err)
 		return nil, cobra.ShellCompDirectiveError
@@ -104,8 +105,8 @@ func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 		}
 
 		baseName := filepath.Base(wd)
-		query := fmt.Sprintf("SELECT id, title FROM local_assignments WHERE course_code = '%s' ORDER BY id ASC", baseName)
-		var assignments []map[string]string
+		query := fmt.Sprintf("SELECT remote_id, title FROM local_assignments WHERE course_code = '%s' ORDER BY remote_id ASC", baseName)
+		var assignments []assignment.LocalAssignment
 		err = db.Raw(query).Scan(&assignments).Error
 		if err != nil {
 			fmt.Println("[ERROR] Query error:", err)
@@ -114,7 +115,7 @@ func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 
 		var assignmentIDs []string
 		for _, assignment := range assignments {
-			completion := fmt.Sprintf("%s\t%s", assignment["id"], assignment["title"])
+			completion := fmt.Sprintf("%d\t%s", assignment.RemoteID, assignment.Title)
 			assignmentIDs = append(assignmentIDs, completion)
 		}
 		return assignmentIDs, cobra.ShellCompDirectiveNoFileComp
