@@ -1,9 +1,11 @@
 package client
 
 import (
+
 	"bytes"
 	"encoding/json"
 	"errors"
+  
 	"fmt"
 	"io"
 	"net/http"
@@ -44,9 +46,11 @@ func GetCourses() ([]map[string]string, error) {
 		StatusName: assignmentData["status_name"],
 	}*/
 	var response struct {
+
 		Message string              `json:"message"`
 		Courses []map[string]string `json:"courses"`
 		Error   string              `json:"error,omitempty"`
+
 	}
 
 	isOnline := network.IsOnline()
@@ -76,7 +80,8 @@ func GetCourses() ([]map[string]string, error) {
 		}
 
 		if response.Error != "" {
-			return nil, errors.New(response.Error)
+
+			return nil, errors.New(rI esponse.Error)
 		}
 
 		if response.Courses == nil {
@@ -98,6 +103,7 @@ func GetCourses() ([]map[string]string, error) {
 
 	return response.Courses, nil
 }
+
 
 func CreateCourse(courseData map[string]string) (map[string]string, error) {
 
@@ -124,6 +130,7 @@ func CreateCourse(courseData map[string]string) (map[string]string, error) {
 		Name:       courseData["name"],
 		Duration:   courseData["duration"],
 		RoomNumber: courseData["room_number"],
+
 	}
 
 	isOnline := network.IsOnline()
@@ -134,6 +141,7 @@ func CreateCourse(courseData map[string]string) (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
+
 
 		jsonData, _ := json.Marshal(courseData)
 
@@ -155,9 +163,11 @@ func CreateCourse(courseData map[string]string) (map[string]string, error) {
 		}
 
 		var response struct {
+
 			Message string            `json:"message"`
 			Course  map[string]string `json:"course"`
 			Error   string            `json:"error,omitempty"`
+
 		}
 
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -191,7 +201,6 @@ func CreateCourse(courseData map[string]string) (map[string]string, error) {
 	return c.ToMap(), nil
 }
 
-/*
 func UpdateAssignment(id, column, value string) error {
 	new_client, err := NewClient()
 	if err != nil {

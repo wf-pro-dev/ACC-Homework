@@ -5,6 +5,7 @@ import (
         "net/http"
 	"github.com/spf13/viper"
 	"fmt"
+	"strconv"
 
         "golang.org/x/crypto/bcrypt"
         "github.com/gorilla/sessions"
@@ -62,8 +63,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+   id := strconv.Itoa(int(user.ID))
+
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{
         "message": "Login successful",
+	"username" : user.Username,
+	"user_id" : id,
     })
 }

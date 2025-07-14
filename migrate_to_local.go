@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/core/models/course"
 	"github.com/williamfotso/acc/internal/services/client"
@@ -52,6 +53,7 @@ func main() {
 	fmt.Println("✅ Migration completed successfully")
 }
 
+
 func migrateCourses(localDB *gorm.DB) error {
 
 	remoteCourses, err := client.GetCourses()
@@ -91,6 +93,7 @@ func migrateAssignments(localDB *gorm.DB) error {
 
 		deadline, err := time.Parse(time.DateOnly, ra["deadline"])
 		if err != nil {
+
 			return fmt.Errorf("Error formating deadline : %s", err)
 		}
 

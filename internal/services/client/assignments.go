@@ -44,9 +44,11 @@ func GetAssignments() ([]map[string]string, error) {
 		StatusName: assignmentData["status_name"],
 	}*/
 	var response struct {
+
 		Message     string              `json:"message"`
 		Assignments []map[string]string `json:"assignments"`
 		Error       string              `json:"error,omitempty"`
+
 	}
 
 	isOnline := network.IsOnline()
@@ -83,6 +85,7 @@ func GetAssignments() ([]map[string]string, error) {
 			return make([]map[string]string, 0), nil
 		}
 
+
 	} /*else {
 		a.SyncStatus = assignment.SyncStatusPending
 	}
@@ -96,7 +99,9 @@ func GetAssignments() ([]map[string]string, error) {
 		return nil, fmt.Errorf("commit failed: %w", err)
 	}*/
 
+
 	return response.Assignments, nil
+
 }
 
 func CreateAssignment(assignmentData map[string]string) (map[string]string, error) {

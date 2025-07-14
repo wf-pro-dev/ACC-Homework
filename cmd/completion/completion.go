@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
 	"github.com/williamfotso/acc/internal/core/models/course"
+  
 	"github.com/williamfotso/acc/internal/storage/local"
 	"github.com/williamfotso/acc/internal/types"
 )
@@ -23,8 +25,10 @@ func CourseCodeCompletion() ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveError
 	}
 
+
 	var courses []course.Course
 	err = db.Raw("SELECT code, name FROM local_courses").Scan(&courses).Error
+
 	if err != nil {
 		fmt.Println("Error getting courses:", err)
 		return nil, cobra.ShellCompDirectiveError
