@@ -78,7 +78,9 @@ func GetCourses() ([]map[string]string, error) {
 
 		if response.Error != "" {
 
+
 			return nil, errors.New(response.Error)
+
 		}
 
 		if response.Courses == nil {
