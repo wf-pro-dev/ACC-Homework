@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"fmt"
-	//"strconv"
-	//"time"
 
 	"github.com/williamfotso/acc/internal/core/models/course"
 	"gorm.io/gorm"
@@ -52,6 +50,7 @@ func GetCourseHandler(w http.ResponseWriter, r *http.Request) {
                 "courses":    coursesMap,
         })
 }
+
 func CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 
 	userIDVal := r.Context().Value("user_id")
@@ -217,3 +216,4 @@ func UpdateCourseHandler(w http.ResponseWriter, r *http.Request) {
         }
 
 }*/
+

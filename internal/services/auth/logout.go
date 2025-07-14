@@ -3,7 +3,9 @@ package auth
 import (
 	"fmt"
 	"net/http"
-	"github.com/williamfotso/acc/internal/services/client" // Update with your correct import path
+
+	"github.com/williamfotso/acc/internal/services/client"
+	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 func Logout() error {
@@ -32,6 +34,10 @@ func Logout() error {
 	// Clear local cookies regardless of server response
 	if err := client.ClearCookies(); err != nil {
 		return fmt.Errorf("failed to clear local cookies: %w", err)
+	}
+
+	if err := local.ClearCredentials(); err != nil {
+		return fmt.Errorf("failed to clear local credentials: %w", err)
 	}
 
 	return nil

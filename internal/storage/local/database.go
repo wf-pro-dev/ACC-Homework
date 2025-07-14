@@ -114,14 +114,22 @@ func SeedInitialData(db *gorm.DB) error {
 		{ID: 3, Name: "Done", Color: "green", NotionID: "2fef8044-d8d7-4fcf-a3ee-393a1d558e94"},
 	}
 
-	err := db.Create(types).Error
-	if err != nil {
-		return err
+	for _, t := range types {
+		if err := db.Where("id = ?", t.ID).First(&models.LocalAssignmentType{}).Error; err != nil {
+			err = db.Create(t).Error
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	err = db.Create(statuses).Error
-	if err != nil {
-		return err
+	for _, status := range statuses {
+		if err := db.Where("id = ?", status.ID).First(&models.LocalAssignmentStatus{}).Error; err != nil {
+			err = db.Create(status).Error
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

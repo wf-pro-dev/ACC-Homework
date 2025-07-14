@@ -8,13 +8,19 @@ import (
 )
 
 func main() {
-	userID := uint(1)
+	userID, err := local.GetCurrentUserID()
+	if err != nil {
+		log.Fatalf("Failed to get current user ID: %v", err)
+	}
+
+	fmt.Printf("Current user ID: %d\n", userID)
 
 	// 1. Initialize database
 	db, err := local.GetLocalDB(userID)
 	if err != nil {
 		log.Fatalf("Failed to create local DB: %v", err)
 	}
+	defer local.CloseAll()
 	fmt.Println("✅ Database connection established")
 
 	tx := db.Begin()
