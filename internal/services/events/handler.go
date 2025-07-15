@@ -2,10 +2,11 @@
 package events
 
 import (
-	// ... existing imports ...
+	"encoding/json"
+
+	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/storage/local"
 )
-
 
 func HandleAssignmentCreate(data json.RawMessage) {
 	// Handle assignment creation
@@ -46,24 +47,21 @@ func HandleAssignmentUpdate(data json.RawMessage) {
 	}()
 
 	var update struct {
-		ID	string	`json:"id"`
-		Column	string	`json:"column"`
-		Value	string	`json:"value"`
+		ID     string `json:"id"`
+		Column string `json:"column"`
+		Value  string `json:"value"`
 	}
-
 
 	if err := json.Unmarshal(data, &update); err != nil {
 		panic(err)
 	}
 
-	
-	if err := tx.Model(&LocalAssignment{ ID : update.ID }).Update(update.Column, update.Value).Error ; err != nil {
+	if err := tx.Model(&assignment.LocalAssignment{}).Where("remote_id = ?", update.ID).Update(update.Column, update.Value).Error; err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
 	tx.Commit()
-
 
 }
 

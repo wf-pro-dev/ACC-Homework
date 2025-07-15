@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ssClient *client.SSEClient
+	sseClient *client.SSEClient
 )
 
 func GetSSEClient() *client.SSEClient {
@@ -69,8 +69,8 @@ func Login(username, password string) error {
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
 	}
-	
-	// Store Credentials to handle Local operations 
+
+	// Store Credentials to handle Local operations
 	if err := local.StoreCredentials(
 		uint(id),
 		response.Username,
@@ -80,11 +80,13 @@ func Login(username, password string) error {
 	}
 
 	// Open the DDE connection
-	sseClient = client.NewSSEClient()
-	if err := sseClient.Connect(); err != nil {
-		log.Printf("Failed to connect to SSE server: %v", err)
-		// Non-fatal error - continue without SSE
-	}
+	sseClient = client.NewSSEClient(new_client)
+	go func() {
+		if err := sseClient.Connect(); err != nil {
+			log.Printf("Failed to connect to SSE server: %v", err)
+			// Non-fatal error - continue without SSE
+		}
+	}()
 
 	return client.SaveCookies(new_client.Jar.Cookies(nil))
 }

@@ -6,16 +6,16 @@ import (
 	"log"
 
 	"github.com/williamfotso/acc/internal/services/auth"
-	"github.com/williamfotso/acc/internal/storage/local"
+	"github.com/williamfotso/acc/internal/services/client"
 )
 
 type EventHandler struct {
 	onAssignmentCreate func(data json.RawMessage)
 	onAssignmentUpdate func(data json.RawMessage)
 	onAssignmentDelete func(data json.RawMessage)
-	onCourseCreate     func(data json.RawMessage)
-	onCourseUpdate     func(data json.RawMessage)
-	onCourseDelete     func(data json.RawMessage)
+	// onCourseCreate     func(data json.RawMessage)
+	// onCourseUpdate     func(data json.RawMessage)
+	// onCourseDelete     func(data json.RawMessage)
 }
 
 func NewEventHandler() *EventHandler {

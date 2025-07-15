@@ -2,14 +2,13 @@
 package client
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"sync"
-
-	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 type SSEClient struct {
@@ -18,6 +17,7 @@ type SSEClient struct {
 	disconnect chan struct{}
 	connected  bool
 	mu         sync.Mutex
+	httpClient *http.Client
 }
 
 type Event struct {
@@ -25,26 +25,18 @@ type Event struct {
 	Data json.RawMessage
 }
 
-func NewSSEClient() *SSEClient {
+func NewSSEClient(httpClient *http.Client) *SSEClient {
 	return &SSEClient{
 		events:     make(chan Event),
 		errors:     make(chan error),
 		disconnect: make(chan struct{}),
+		httpClient: httpClient,
 	}
 }
 
 func (c *SSEClient) Connect() error {
-	userID, err := local.GetCurrentUserID()
-	if err != nil {
-		return fmt.Errorf("failed to get user ID: %w", err)
-	}
 
 	// Create new HTTP client with cookies
-	httpClient, err := NewClient()
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP client: %w", err)
-	}
-
 	req, err := http.NewRequest("GET", "https://newsroom.dedyn.io/acc-homework/events", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -54,7 +46,7 @@ func (c *SSEClient) Connect() error {
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("Connection", "keep-alive")
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to connect to SSE: %w", err)
 	}

@@ -7,8 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
-	"github.com/williamfotso/acc/internal/types"
 	"github.com/williamfotso/acc/internal/services/events"
+	"github.com/williamfotso/acc/internal/storage/local"
+	"github.com/williamfotso/acc/internal/types"
 	"gorm.io/gorm"
 )
 
@@ -40,7 +41,6 @@ func ValidateAssignmentId(id string, db *gorm.DB) error {
 		return fmt.Errorf("failed to convert assignment ID to int: %s", err)
 	}
 
-
 	assignment, _ := assignment.Get_Local_Assignment_byId(uint(int_id), db)
 	if assignment == nil {
 		return fmt.Errorf("assignment not found")
@@ -58,8 +58,6 @@ func ColumnError(message string) {
 	}
 	os.Exit(1)
 }
-
-
 
 var rootCmd = &cobra.Command{
 	Use:   "acc",

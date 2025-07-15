@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"syscall"
+
 	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/internal/services/auth"
-	"github.com/williamfotso/acc/internal/services/events"
-	"syscall"
 )
 
 var loginCmd = &cobra.Command{
@@ -16,7 +16,7 @@ var loginCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Requires exactly 1 argument (username)
 	Run: func(cmd *cobra.Command, args []string) {
 		username := args[0]
-		
+
 		// Prompt for password with masking
 		fmt.Printf("Password for %s: ", username)
 		password, err := gopass.GetPasswdMasked()
@@ -24,7 +24,7 @@ var loginCmd = &cobra.Command{
 			fmt.Println("\nError reading password:", err)
 			return
 		}
-		
+
 		// Perform login
 		err = auth.Login(username, string(password))
 		if err != nil {
@@ -32,8 +32,9 @@ var loginCmd = &cobra.Command{
 			syscall.Exit(1)
 		}
 
+		// Start event handler
 		eventHandler.Start()
-		
+
 		fmt.Println("\nLogin successful!")
 	},
 }
