@@ -35,7 +35,7 @@ func (h *EventHandler) Start() {
 				if !ok {
 					return
 				}
-				h.handleEvent(event)
+				h.HandleEvent(event)
 			case err, ok := <-sseClient.Errors():
 				if !ok {
 					return
@@ -46,7 +46,7 @@ func (h *EventHandler) Start() {
 	}()
 }
 
-func (h *EventHandler) handleEvent(event client.Event) {
+func (h *EventHandler) HandleEvent(event client.Event) {
 	var notification struct {
 		Type    string          `json:"type"`
 		Entity  string          `json:"entity"`

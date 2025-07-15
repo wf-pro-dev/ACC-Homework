@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,13 +10,15 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/williamfotso/acc/internal/services/client"
 	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 var (
-	sseClient *client.SSEClient
+	sseClient     *client.SSEClient
+	sseCancelFunc context.CancelFunc // Add this to control SSE lifecycle
 )
 
 func GetSSEClient() *client.SSEClient {
@@ -78,15 +81,50 @@ func Login(username, password string) error {
 		log.Printf("Failed to store local credentials: %v", err)
 		// Continue anyway - this is non-fatal
 	}
-
 	// Open the DDE connection
+	// Open the SSE connection
+	cookies := new_client.Jar.Cookies(nil)
 	sseClient = client.NewSSEClient(new_client)
+
+	// Create a context we can cancel
+	ctx, cancel := context.WithCancel(context.Background())
+	sseCancelFunc = cancel
+
+	// Start SSE connection with retries
 	go func() {
-		if err := sseClient.Connect(); err != nil {
-			log.Printf("Failed to connect to SSE server: %v", err)
-			// Non-fatal error - continue without SSE
+		retryDelay := time.Second
+		maxRetries := 5
+
+		for i := 0; i < maxRetries; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				err := sseClient.Connect()
+				if err == nil {
+					log.Println("SSE connection established")
+					return
+				}
+
+				log.Printf("SSE connection attempt %d failed: %v", i+1, err)
+				if i < maxRetries-1 {
+					time.Sleep(retryDelay)
+					retryDelay *= 2 // Exponential backoff
+				}
+			}
 		}
+		log.Println("Max SSE connection attempts reached")
 	}()
 
-	return client.SaveCookies(new_client.Jar.Cookies(nil))
+	return client.SaveCookies(cookies)
+}
+
+// Add this new function to clean up SSE
+func CleanupSSE() {
+	if sseCancelFunc != nil {
+		sseCancelFunc()
+	}
+	if sseClient != nil {
+		sseClient.Disconnect()
+	}
 }

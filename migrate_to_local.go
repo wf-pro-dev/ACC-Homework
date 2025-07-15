@@ -68,6 +68,8 @@ func migrateCourses(localDB *gorm.DB) error {
 		return err
 	}
 
+	count := 0
+
 	for _, rc := range remoteCourses {
 		remote_id, err := strconv.Atoi(rc["id"])
 		if err != nil {
@@ -83,12 +85,17 @@ func migrateCourses(localDB *gorm.DB) error {
 			SyncStatus: course.SyncStatusSynced,
 		}
 
+		if err := localDB.First(&localCourse, "remote_id = ?", remote_id).Error; err == nil {
+			continue
+		}
+
 		if err := localDB.Create(&localCourse).Error; err != nil {
 			return err
 		}
+		count++
 	}
 
-	fmt.Printf("✅ Migrated %d courses\n", len(remoteCourses))
+	fmt.Printf("✅ Migrated %d courses\n", count)
 	return nil
 }
 
@@ -99,6 +106,8 @@ func migrateAssignments(localDB *gorm.DB) error {
 		fmt.Printf("ERROR : %s", err)
 		return err
 	}
+
+	count := 0
 
 	for _, ra := range remoteAssignments {
 
@@ -126,11 +135,16 @@ func migrateAssignments(localDB *gorm.DB) error {
 			SyncStatus: assignment.SyncStatusSynced,
 		}
 
+		if err := localDB.First(&localAssignment, "remote_id = ?", remote_id).Error; err == nil {
+			continue
+		}
+
 		if err := localDB.Create(&localAssignment).Error; err != nil {
 			return err
 		}
+		count++
 	}
 
-	fmt.Printf("✅ Migrated %d assignments\n", len(remoteAssignments))
+	fmt.Printf("✅ Migrated %d assignments\n", count)
 	return nil
 }

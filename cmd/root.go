@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/services/auth"
 	"github.com/williamfotso/acc/internal/services/events"
 	"github.com/williamfotso/acc/internal/storage/local"
 	"github.com/williamfotso/acc/internal/types"
@@ -26,8 +28,34 @@ func init() {
 
 	// Start listening for events if logged in
 	if _, err := local.GetCurrentUserID(); err == nil {
-		eventHandler.Start()
+		startEventHandling()
 	}
+}
+
+func startEventHandling() {
+	// Ensure clean shutdown on exit
+	cobra.OnFinalize(auth.CleanupSSE)
+
+	// Start event handler
+	eventHandler.Start()
+
+	// Monitor SSE connection
+	go func() {
+		sseClient := auth.GetSSEClient()
+		if sseClient == nil {
+			return
+		}
+
+		for {
+			select {
+			case event := <-sseClient.Events():
+				eventHandler.HandleEvent(event)
+			case err := <-sseClient.Errors():
+				log.Printf("SSE error: %v", err)
+				// Consider automatic reconnection here
+			}
+		}
+	}()
 }
 
 func ValidateAssignmentId(id string, db *gorm.DB) error {
@@ -70,6 +98,9 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	if _, err := local.GetCurrentUserID(); err == nil {
+		startEventHandling()
+	}
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

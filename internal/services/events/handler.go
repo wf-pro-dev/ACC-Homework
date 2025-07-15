@@ -3,6 +3,7 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/storage/local"
@@ -57,6 +58,7 @@ func HandleAssignmentUpdate(data json.RawMessage) {
 	}
 
 	if err := tx.Model(&assignment.LocalAssignment{}).Where("remote_id = ?", update.ID).Update(update.Column, update.Value).Error; err != nil {
+		fmt.Printf("Error updating assignment %s with %s = %s\n", update.ID, update.Column, update.Value)
 		tx.Rollback()
 		panic(err)
 	}
