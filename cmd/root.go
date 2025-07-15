@@ -23,7 +23,7 @@ func ValidateAssignmentId(id string, db *gorm.DB) error {
 	}
 
 
-	assignment, _ := assignment.Get_Assignment_byId(uint(int_id), db)
+	assignment, _ := assignment.Get_Local_Assignment_byId(uint(int_id), db)
 	if assignment == nil {
 		return fmt.Errorf("assignment not found")
 	}

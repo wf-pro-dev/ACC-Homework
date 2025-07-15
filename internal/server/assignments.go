@@ -134,7 +134,7 @@ func CreateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	aObj := &aVal
 
-	a, err := assignment.Get_Assignment_byId(aObj.ID, tx)
+	a, err := assignment.Get_Assignment_byId(aObj.ID, userID, tx)
 	if err != nil {
                 PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to getting assignment: %s", err))
                 return
@@ -188,6 +188,22 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
                 return
         }
+
+
+	userIDVal := r.Context().Value("user_id")
+	if userIDVal == nil {
+		PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
+		return
+	}
+
+
+	userID, ok := userIDVal.(uint)
+	if !ok {
+		PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
+		return
+	}
+
+	
 	
 	tx := db.Begin()
         defer func() {
@@ -214,7 +230,7 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
                 return
         }
 
-	a, err := assignment.Get_Assignment_byId(uint(int_id), tx)
+	a, err := assignment.Get_Assignment_byId(uint(int_id), userID, tx)
 	if err != nil {
                 PrintERROR(w,http.StatusInternalServerError,fmt.Sprintf("failed to getting assignment: %s", err))
                 return
@@ -233,20 +249,6 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 	//PrintLog(fmt.Sprintf("column : %s, value :%s, user id:%s", updateData.Column, value, dbVal.(string) ))
 	if updateData.Column == "course_code" {
 		//PrintLog(fmt.Sprintf("column : %s, value :%s, user id:%s", updateData.Column, value, dbVal.(string) ))
-		
-		userIDVal := r.Context().Value("user_id")
-       		if userIDVal == nil {
-                	PrintERROR(w, http.StatusUnauthorized, "User ID not found in context")
-                	return
-        	}
-
-
-		userID, ok := userIDVal.(uint)
-		if !ok {
-			PrintERROR(w, http.StatusUnauthorized, "Invalid user ID format")
-			return
-		}
-
 		
 		c, err := course.Get_Course_byCode(value, strconv.Itoa(int(userID)), tx)
 		if err != nil {

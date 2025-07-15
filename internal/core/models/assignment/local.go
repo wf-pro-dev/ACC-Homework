@@ -52,6 +52,20 @@ func (a *LocalAssignment) ToMap() map[string]string {
 	}
 }
 
+func Get_Local_Assignment_byId(id uint, db *gorm.DB) (*LocalAssignment,error) {
+	assignment := &LocalAssignment{}
+	err := db.Preload("Course").
+		Preload("Type").
+		Preload("Status").
+		Where("id = ?", id).
+		First(assignment).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return assignment, nil
+}
+
 func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filter, up_to_date bool, db *gorm.DB) {
 
 	col_length := 15
