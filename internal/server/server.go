@@ -17,6 +17,8 @@ import (
 
 )
 
+var sseServer *SSEServer
+
 // MiddleWares ! put on separate file
 
 func dbMiddleware(db *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
@@ -45,7 +47,9 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
         if err != nil {
 		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create session: %w",err))
 		return
-        }
+	}
+
+	ctx := context.Background()
 
         // Check if user is authenticated
         auth, ok := session.Values["authenticated"].(bool)
@@ -57,10 +61,11 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
         // You can also add the user ID to the request context if needed
         userID, ok := session.Values["user_id"].(uint)
         if ok {
-             ctx := context.WithValue(r.Context(), "user_id", userID)
+             ctx = context.WithValue(ctx, "user_id", userID)
              r = r.WithContext(ctx)
         }
-
+	
+	r.Header.Set("Connection", "keep-alive")
         next.ServeHTTP(w, r)
     }
 }
@@ -73,7 +78,7 @@ func StartServer() {
                 return
 	}
 	
-	sseServer := NewSSEServer(db)
+	sseServer = NewSSEServer(db)
 
 
 

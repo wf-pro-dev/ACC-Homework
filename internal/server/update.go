@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"strconv"
 
 	"gorm.io/gorm"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
@@ -89,6 +90,23 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload types.
 			} 
 
 			tx.Commit()
+		
+			if sseServer != nil {
+				sseServer.SendNotification(
+					u.ID,
+					"update",
+					"assignment",
+					a.NotionID,
+					fmt.Sprintf("Assignment updated: %s", a.Title),
+					map[string]string{
+						"id":		strconv.Itoa(int(a.ID)),	
+						"column":	column,
+						"value":	value,
+					},
+				)
+			} else {
+				PrintLog("sseServer is nil\n")
+			}
 
 			/*notification_id := fmt.Sprintf("%s-%s-%s", assignment.NotionID, column, value)
 			title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
