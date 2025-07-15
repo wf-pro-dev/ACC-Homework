@@ -62,6 +62,8 @@ func main() {
 
 func migrateCourses(localDB *gorm.DB) error {
 
+	count := 0
+
 	remoteCourses, err := client.GetCourses()
 	if err != nil {
 		fmt.Printf("ERROR : %s", err)
@@ -82,17 +84,23 @@ func migrateCourses(localDB *gorm.DB) error {
 			RoomNumber: rc["room_number"],
 			SyncStatus: course.SyncStatusSynced,
 		}
+		fmt.Printf("Course remote_id: %d\n", remote_id)
+		if err := localDB.First(&localCourse, "remote_id = ?", remote_id).Error; err == nil {
+			continue
+		}
 
 		if err := localDB.Create(&localCourse).Error; err != nil {
+			count++
 			return err
 		}
 	}
 
-	fmt.Printf("✅ Migrated %d courses\n", len(remoteCourses))
 	return nil
 }
 
 func migrateAssignments(localDB *gorm.DB) error {
+
+	count := 0
 
 	remoteAssignments, err := client.GetAssignments()
 	if err != nil {
@@ -126,11 +134,16 @@ func migrateAssignments(localDB *gorm.DB) error {
 			SyncStatus: assignment.SyncStatusSynced,
 		}
 
+		if err := localDB.First(&localAssignment, "remote_id = ?", remote_id).Error; err == nil {
+			continue
+		}
+
 		if err := localDB.Create(&localAssignment).Error; err != nil {
+			count++
 			return err
 		}
 	}
 
-	fmt.Printf("✅ Migrated %d assignments\n", len(remoteAssignments))
+	fmt.Printf("✅ Migrated %d assignments\n", count)
 	return nil
 }

@@ -49,6 +49,7 @@ func (a *LocalAssignment) ToMap() map[string]string {
 		"todo":        a.Todo,
 		"status_name": a.StatusName,
 		"link":        a.Link,
+		"notion_id":   a.NotionID, // NOTE: Null if not created in Notion
 	}
 }
 

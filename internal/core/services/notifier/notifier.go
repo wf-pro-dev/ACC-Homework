@@ -7,7 +7,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 func getUntilDeadline(deadline time.Time) string {
@@ -46,7 +47,7 @@ func UseNotifier(args []string) error {
 	var err error
 	// Try different locations until we find the binary
 	for _, path := range locations {
-		cmd = exec.Command(path, "-group", "ACC", "-remove", "ACC")
+
 		cmd = exec.Command(path, args...)
 		err = cmd.Run()
 		if err == nil {
@@ -93,7 +94,7 @@ func sendNotification(assign map[string]string) error {
 	}
 
 	// Send notification if the assignment is not done
-	if assign["status"] != "done" {
+	if assign["status_name"] != "Done" {
 		err = UseNotifier(args)
 		if err != nil {
 			return fmt.Errorf("failed to send notification: %w", err)
@@ -105,28 +106,36 @@ func sendNotification(assign map[string]string) error {
 
 // scheduleNotifications checks for upcoming assignments and notifies
 func ScheduleNotifications() error {
-	db, err := database.GetDB()
+
+	userID, err := local.GetCurrentUserID()
 	if err != nil {
-		return fmt.Errorf("database error: %w", err)
+		return err
+	}
+
+	db, err := local.GetLocalDB(userID)
+	if err != nil {
+		return err
 	}
 
 	now := time.Now()
 
 	query := fmt.Sprintf(
-		"SELECT * FROM assignements WHERE deadline BETWEEN '%s' AND '%s' ORDER BY deadline ASC",
-		now.Format(time.DateOnly),
-		now.AddDate(0, 0, 7).Format(time.DateOnly),
+		"SELECT * FROM local_assignments WHERE deadline BETWEEN '%s' AND '%s' ORDER BY deadline ASC",
+		now.Format("2006-01-02 15:04:05-07:00"),
+		now.AddDate(0, 0, 7).Format("2006-01-02 15:04:05-07:00"),
 	)
 
-	assignments, err := database.GetHandler(query, db)
+	var assignments []assignment.LocalAssignment
+	err = db.Raw(query).Scan(&assignments).Error
 
 	if err != nil {
 		return fmt.Errorf("query error: %w", err)
 	}
 
 	for _, assign := range assignments {
-		if err := sendNotification(assign); err != nil {
-			fmt.Printf("Error notifying for assignment %s: %v\n", assign["title"], err)
+		assign_map := assign.ToMap()
+		if err := sendNotification(assign_map); err != nil {
+			fmt.Printf("Error notifying for assignment %s: %v\n", assign.Title, err)
 		}
 		time.Sleep(5 * time.Second) // Space out notifications
 	}
