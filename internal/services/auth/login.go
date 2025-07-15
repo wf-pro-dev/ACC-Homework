@@ -14,7 +14,16 @@ import (
 	"github.com/williamfotso/acc/internal/storage/local"
 )
 
+var (
+	ssClient *client.SSEClient
+)
+
+func GetSSEClient() *client.SSEClient {
+	return sseClient
+}
+
 func Login(username, password string) error {
+
 	new_client, err := client.NewClient()
 	if err != nil {
 		return err
@@ -60,13 +69,21 @@ func Login(username, password string) error {
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
 	}
-
+	
+	// Store Credentials to handle Local operations 
 	if err := local.StoreCredentials(
 		uint(id),
 		response.Username,
 	); err != nil {
 		log.Printf("Failed to store local credentials: %v", err)
 		// Continue anyway - this is non-fatal
+	}
+
+	// Open the DDE connection
+	sseClient = client.NewSSEClient()
+	if err := sseClient.Connect(); err != nil {
+		log.Printf("Failed to connect to SSE server: %v", err)
+		// Non-fatal error - continue without SSE
 	}
 
 	return client.SaveCookies(new_client.Jar.Cookies(nil))

@@ -5,6 +5,7 @@ import (
 	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/internal/services/auth"
+	"github.com/williamfotso/acc/internal/services/events"
 	"syscall"
 )
 
@@ -30,6 +31,8 @@ var loginCmd = &cobra.Command{
 			fmt.Println("\nLogin failed:", err)
 			syscall.Exit(1)
 		}
+
+		eventHandler.Start()
 		
 		fmt.Println("\nLogin successful!")
 	},

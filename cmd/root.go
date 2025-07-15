@@ -8,8 +8,26 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/types"
+	"github.com/williamfotso/acc/internal/services/events"
 	"gorm.io/gorm"
 )
+
+var eventHandler *events.EventHandler
+
+func init() {
+	// Initialize event handler
+	eventHandler = events.NewEventHandler()
+
+	// Set up event handlers
+	eventHandler.OnAssignmentCreate(events.HandleAssignmentCreate)
+	eventHandler.OnAssignmentUpdate(events.HandleAssignmentUpdate)
+	eventHandler.OnAssignmentDelete(events.HandleAssignmentDelete)
+
+	// Start listening for events if logged in
+	if _, err := local.GetCurrentUserID(); err == nil {
+		eventHandler.Start()
+	}
+}
 
 func ValidateAssignmentId(id string, db *gorm.DB) error {
 
@@ -40,6 +58,8 @@ func ColumnError(message string) {
 	}
 	os.Exit(1)
 }
+
+
 
 var rootCmd = &cobra.Command{
 	Use:   "acc",

@@ -73,7 +73,12 @@ func StartServer() {
                 return
 	}
 	
+	sseServer := NewSSEServer(db)
+
+
+
 	http.HandleFunc("/webhooks", dbMiddleware(db,notionWebhookHandler))
+	http.HandleFunc("/acc-homework/events", AuthMiddleware(sseServer.SSEHandler))
 
 	http.HandleFunc("/acc-homework/register", dbMiddleware(db,RegisterHandler))
 	http.HandleFunc("/acc-homework/login", dbMiddleware(db,LoginHandler))
