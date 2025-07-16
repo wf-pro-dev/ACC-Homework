@@ -35,14 +35,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
     var user user.User
     if err := db.Where("username = ?", credentials.Username).First(&user).Error; err != nil {
         PrintERROR(w, http.StatusUnauthorized, "Invalid credentials")
-        return
+        
+
+	return
     }
 
     // Check password
     if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(credentials.Password)); err != nil {
-        PrintERROR(w, http.StatusUnauthorized, "Invalid credentials")
-        return
-    }
+		
+	    	PrintERROR(w, http.StatusUnauthorized, "Invalid credentials")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+    
 
     // Create session
     viper.SetConfigFile(".env")
@@ -70,5 +76,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         "message": "Login successful",
 	"username" : user.Username,
 	"user_id" : id,
+	"error": "",
     })
 }

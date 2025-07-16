@@ -9,6 +9,7 @@ import (
 )
 
 func Logout() error {
+
 	// Create new client that will load existing cookies
 	c, err := client.NewClient()
 	if err != nil {

@@ -22,7 +22,6 @@ func ValidateAssignmentId(id string, db *gorm.DB) error {
 		return fmt.Errorf("failed to convert assignment ID to int: %s", err)
 	}
 
-
 	assignment, _ := assignment.Get_Local_Assignment_byId(uint(int_id), db)
 	if assignment == nil {
 		return fmt.Errorf("assignment not found")
@@ -52,6 +51,7 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

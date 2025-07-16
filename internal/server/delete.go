@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"time"
 	"net/http"
 
 	"gorm.io/gorm"
@@ -32,12 +33,14 @@ func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload types.
         }()	
 
 	a, err := assignment.Get_Assignment_byNotionID(payload.Entity.Id, tx)
-
+	
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError,
 			fmt.Sprintf("Error getting assignment: %s", err))
 		return
 	}
+
+	a_map := a.ToMap()
 
 	err = tx.Delete(&a).Error 
 	if err != nil {
@@ -76,6 +79,23 @@ func WebhookDeleteHandler(w http.ResponseWriter, r *http.Request, payload types.
 	}*/
 
 	tx.Commit()
+	
+	PrintLog(fmt.Sprintf("Assignment deleted: %v by user %v",a_map["title"],a.UserID))
+	
+	a_map["deadline"] = a.Deadline.Format(time.RFC3339)
 
-	PrintLog(fmt.Sprintf("Assignment deleted: %s %s", payload.Entity.Id, a.Title))
+	a_map["deadline"] = a.CreatedAt.Format(time.RFC3339)
+	
+	a_map["deadline"] = a.UpdatedAt.Format(time.RFC3339)
+	
+	if sseServer != nil {
+		sseServer.SendNotification(
+			a.UserID,
+			"delete",
+			"assignment",
+			payload.Entity.Id,
+			fmt.Sprintf("Assignment deleted: %s", a.Title),
+			a_map,
+		)
+	}
 }

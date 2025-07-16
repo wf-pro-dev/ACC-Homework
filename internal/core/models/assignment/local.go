@@ -49,11 +49,11 @@ func (a *LocalAssignment) ToMap() map[string]string {
 		"todo":        a.Todo,
 		"status_name": a.StatusName,
 		"link":        a.Link,
-		"notion_id":   a.NotionID, // NOTE: Null if not created in Notion
+		"notion_id":   a.NotionID,
 	}
 }
 
-func Get_Local_Assignment_byId(id uint, db *gorm.DB) (*LocalAssignment,error) {
+func Get_Local_Assignment_byId(id uint, db *gorm.DB) (*LocalAssignment, error) {
 	assignment := &LocalAssignment{}
 	err := db.Preload("Course").
 		Preload("Type").
@@ -70,7 +70,7 @@ func Get_Local_Assignment_byId(id uint, db *gorm.DB) (*LocalAssignment,error) {
 func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filter, up_to_date bool, db *gorm.DB) {
 
 	col_length := 15
-	query := fmt.Sprintf("SELECT %s FROM local_assignments WHERE course_code='%v'", strings.Join(columns, ","), course_code)
+	query := fmt.Sprintf("SELECT %s FROM local_assignments WHERE course_code='%v' AND deleted_at is NULL", strings.Join(columns, ","), course_code)
 
 	for _, filter := range filters {
 
@@ -90,7 +90,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 
 	if up_to_date {
 		today := time.Now().Format(time.DateOnly)
-		query += fmt.Sprintf(" AND deadline > '%v'", today)
+		query += fmt.Sprintf(" AND deadline >= '%v'", today)
 	}
 	query += " ORDER BY deadline ASC"
 	assignments := []LocalAssignment{}

@@ -17,9 +17,11 @@ import (
 
 )
 
+var sseServer *SSEServer
+
 // MiddleWares ! put on separate file
 
-func dbMiddleware(db *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
+func DBMiddleware(db *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         ctx := context.WithValue(r.Context(), "db", db)
         next(w, r.WithContext(ctx))
@@ -45,7 +47,8 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
         if err != nil {
 		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create session: %w",err))
 		return
-        }
+	}
+
 
         // Check if user is authenticated
         auth, ok := session.Values["authenticated"].(bool)
@@ -53,14 +56,14 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
             PrintERROR(w, http.StatusUnauthorized, "Unauthorized - please login")
             return
         }
-
-        // You can also add the user ID to the request context if needed
+        
+	// You can also add the user ID to the request context if needed
         userID, ok := session.Values["user_id"].(uint)
         if ok {
-             ctx := context.WithValue(r.Context(), "user_id", userID)
-             r = r.WithContext(ctx)
+		ctx := context.WithValue(r.Context(), "user_id", userID)
+		r = r.WithContext(ctx)
         }
-
+	
         next.ServeHTTP(w, r)
     }
 }
@@ -73,20 +76,25 @@ func StartServer() {
                 return
 	}
 	
-	http.HandleFunc("/webhooks", dbMiddleware(db,notionWebhookHandler))
+	
+	sseServer = NewSSEServer(db)
 
-	http.HandleFunc("/acc-homework/register", dbMiddleware(db,RegisterHandler))
-	http.HandleFunc("/acc-homework/login", dbMiddleware(db,LoginHandler))
+
+	http.HandleFunc("/webhooks", DBMiddleware(db,notionWebhookHandler))
+	http.HandleFunc("/acc-homework/events", AuthMiddleware(sseServer.SSEHandler))
+
+	http.HandleFunc("/acc-homework/register", DBMiddleware(db,RegisterHandler))
+	http.HandleFunc("/acc-homework/login", DBMiddleware(db,LoginHandler))
 	http.HandleFunc("/acc-homework/logout", AuthMiddleware(LogoutHandler))
-	http.HandleFunc("/acc-homework/user", dbMiddleware(db,AuthMiddleware(GetUserHandler)))
+	http.HandleFunc("/acc-homework/user", DBMiddleware(db,AuthMiddleware(GetUserHandler)))
 
-	http.HandleFunc("/acc-homework/assignment", dbMiddleware(db,AuthMiddleware(CreateAssignmentHandler)))
-	http.HandleFunc("/acc-homework/assignment/get", dbMiddleware(db,AuthMiddleware(GetAssignmentHandler)))
-	http.HandleFunc("/acc-homework/assignment/update", dbMiddleware(db,AuthMiddleware(UpdateAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment", DBMiddleware(db,AuthMiddleware(CreateAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment/get", DBMiddleware(db,AuthMiddleware(GetAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment/update", DBMiddleware(db,AuthMiddleware(UpdateAssignmentHandler)))
 
-	http.HandleFunc("/acc-homework/course", dbMiddleware(db,AuthMiddleware(CreateCourseHandler)))
+	http.HandleFunc("/acc-homework/course", DBMiddleware(db,AuthMiddleware(CreateCourseHandler)))
 
-	http.HandleFunc("/acc-homework/course/get", dbMiddleware(db,AuthMiddleware(GetCourseHandler)))
+	http.HandleFunc("/acc-homework/course/get", DBMiddleware(db,AuthMiddleware(GetCourseHandler)))
 	
 	http.HandleFunc("/notion-webhooks/test", testHandler)
 	//http.HandleFunc("/notion-webhooks", notionWebhookHandler)

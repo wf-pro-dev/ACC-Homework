@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"strconv"
 
 	"gorm.io/gorm"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
@@ -88,36 +89,26 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload types.
 				return
 			} 
 
-			tx.Commit()
-
-			/*notification_id := fmt.Sprintf("%s-%s-%s", assignment.NotionID, column, value)
-			title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
-			subtitle := fmt.Sprintf("Updated at %s", time.Now().Format(time.Stamp))
-			message := fmt.Sprintf("%s is now %s", column, value)
-
-			args := []string{
-				"-group", notification_id,
-				"-title", title,
-				"-subtitle", subtitle,
-				"-message", message,
-				"-sound", "Frog",
-				"-timeout", "5", // Notification stays for 30 seconds
+			if sseServer != nil {
+				sseServer.SendNotification(
+					u.ID,
+					"update",
+					"assignment",
+					a.NotionID,
+					fmt.Sprintf("Assignment updated: %s %s is now %s", a.Title, column, value),
+					map[string]string{
+						"id":		strconv.Itoa(int(a.ID)),	
+						"column":	column,
+						"value":	value,
+					},
+				)
+			} else {
+				PrintLog("sseServer is nil\n")
 			}
 
-			err = notifier.UseNotifier(args)
-			if err != nil {
-				PrintERROR(w, http.StatusInternalServerError,
-					fmt.Sprintf("Error sending notification: %s", err))
-			}
-			time.Sleep(10 * time.Second) // Wait for the notification to be sent
-
-			err = notifier.UseNotifier([]string{"-remove", notification_id})
-			if err != nil {
-				PrintERROR(w, http.StatusInternalServerError,
-					fmt.Sprintf("Error removing notification: %s", err))
-			}*/
 		}
 	}
+	tx.Commit()
 
 }
 
