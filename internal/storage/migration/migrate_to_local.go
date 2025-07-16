@@ -37,7 +37,7 @@ func main() {
 	}()
 
 	// 2. Seed initial data
-	if err := local.SeedInitialData(tx); err != nil {
+	if err := local.InitializeSchema(tx); err != nil {
 		tx.Rollback()
 		log.Fatalf("Failed to seed initial data: %v", err)
 	}

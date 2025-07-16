@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -34,7 +33,6 @@ var logoutCmd = &cobra.Command{
 					if err != nil {
 						log.Printf("Warning: invalid PID in file: %v", err)
 					} else {
-						fmt.Println("Stopping listener process...")
 						// Find and signal the process to terminate.
 						process, err := os.FindProcess(pid)
 						if err != nil {
@@ -49,8 +47,6 @@ var logoutCmd = &cobra.Command{
 				}
 				// Clean up the PID file regardless of success.
 				os.Remove(pidFile)
-			} else {
-				fmt.Println("Listener is not running.")
 			}
 		}
 
@@ -58,6 +54,6 @@ var logoutCmd = &cobra.Command{
 		if err := auth.Logout(); err != nil {
 			log.Fatalf("Logout failed: %v", err)
 		}
-		fmt.Println("Logout successful. Local credentials cleared.")
+		log.Println("Logout successful.")
 	},
 }

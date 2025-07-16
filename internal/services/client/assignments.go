@@ -13,38 +13,11 @@ import (
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/services/network"
 	"github.com/williamfotso/acc/internal/storage/local"
+	"gorm.io/gorm"
 )
 
 func GetAssignments() ([]map[string]string, error) {
 
-	/*userID := uint(1)
-	db, err := local.GetLocalDB(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	deadline, err := time.Parse(time.RFC3339, assignmentData["deadline"])
-	if err != nil {
-		return nil, err
-	}
-
-	// Create local assignment
-	a := assignment.LocalAssignment{
-		Title:      assignmentData["title"],
-		Todo:       assignmentData["todo"],
-		Deadline:   deadline,
-		Link:       assignmentData["link"],
-		CourseCode: assignmentData["course_code"],
-		TypeName:   assignmentData["type_name"],
-		StatusName: assignmentData["status_name"],
-	}*/
 	var response struct {
 		Message     string              `json:"message"`
 		Assignments []map[string]string `json:"assignments"`
@@ -85,18 +58,7 @@ func GetAssignments() ([]map[string]string, error) {
 			return make([]map[string]string, 0), nil
 		}
 
-	} /*else {
-		a.SyncStatus = assignment.SyncStatusPending
 	}
-
-	if err := tx.Create(&a).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("local create failed: %w", err)
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("commit failed: %w", err)
-	}*/
 
 	return response.Assignments, nil
 
@@ -278,6 +240,56 @@ func UpdateAssignment(id, column, value string) error {
 	err = tx.Commit().Error
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func MigrateAssignments(db *gorm.DB) error {
+
+	count := 0
+
+	remoteAssignments, err := GetAssignments()
+	if err != nil {
+		fmt.Printf("ERROR : %s", err)
+		return err
+	}
+
+	for _, ra := range remoteAssignments {
+
+		deadline, err := time.Parse(time.DateOnly, ra["deadline"])
+		if err != nil {
+
+			return fmt.Errorf("Error formating deadline : %s", err)
+		}
+
+		remote_id, err := strconv.Atoi(ra["id"])
+		if err != nil {
+			return fmt.Errorf("Error formating remote_id : %s", err)
+		}
+
+		localAssignment := assignment.LocalAssignment{
+			RemoteID:   uint(remote_id),
+			Title:      ra["title"],
+			Todo:       ra["todo"],
+			Deadline:   deadline,
+			Link:       ra["link"],
+			CourseCode: ra["course_code"],
+			TypeName:   ra["type"],
+			StatusName: ra["status"],
+			NotionID:   ra["notion_id"],
+			SyncStatus: assignment.SyncStatusSynced,
+		}
+
+		if err := db.First(&localAssignment, "remote_id = ?", remote_id).Error; err == nil {
+			continue
+		}
+
+		if err := db.Create(&localAssignment).Error; err != nil {
+			count++
+			return err
+		}
+		count++
 	}
 
 	return nil

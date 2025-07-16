@@ -55,11 +55,6 @@ func GetLocalDB(userID uint) (*gorm.DB, error) {
 	}
 	sqlDB.SetMaxOpenConns(1) // SQLite works best with single connection
 
-	// Initialize schema
-	if err := initializeSchema(db); err != nil {
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
-	}
-
 	// Cache the instance
 	dbInstances[userID] = db
 
@@ -86,22 +81,24 @@ func getDBPath(userID uint) (string, error) {
 	), nil
 }
 
-func initializeSchema(db *gorm.DB) error {
+func InitializeSchema(db *gorm.DB) error {
 	// Enable foreign key support for SQLite
 	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
 		return fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
 	// Run migrations
-	return db.AutoMigrate(
+	err := db.AutoMigrate(
 		&course.LocalCourse{},
 		&models.LocalAssignmentType{},
 		&models.LocalAssignmentStatus{},
 		&assignment.LocalAssignment{},
 	)
-}
 
-func SeedInitialData(db *gorm.DB) error {
+	if err != nil {
+		return fmt.Errorf("failed to migrate schema: %s", err)
+	}
+
 	types := []*models.LocalAssignmentType{
 		{ID: 1, Name: "HW", Color: "yellow", NotionID: "Vn}Z"},
 		{ID: 2, Name: "Exam", Color: "red", NotionID: "oiNS"},

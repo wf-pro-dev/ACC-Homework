@@ -1,5 +1,4 @@
-
-package global 
+package global
 
 import (
 	"database/sql"
@@ -21,38 +20,37 @@ import (
 )
 
 func GetDB() (*gorm.DB, error) {
-    viper.SetConfigFile(".env")
-    err := viper.ReadInConfig()
-    if err != nil {
-        return nil, fmt.Errorf("error reading config file: %w", err)
-    }
+	viper.SetConfigFile(".env")
+	err := viper.ReadInConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error reading config file: %w", err)
+	}
 
-    host := viper.GetString("DB_HOST")
-    port := viper.GetInt("DB_PORT")
-    user := viper.GetString("DB_USER")
-    password := viper.GetString("DB_PASSWORD")
-    dbname := viper.GetString("DB_NAME")
+	host := viper.GetString("DB_HOST")
+	port := viper.GetInt("DB_PORT")
+	user := viper.GetString("DB_USER")
+	password := viper.GetString("DB_PASSWORD")
+	dbname := viper.GetString("DB_NAME")
 
-    // Updated connection string with SSL
-    psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
-        host, port, user, password, dbname)
+	// Updated connection string with SSL
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
+		host, port, user, password, dbname)
 
-    db, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
-	    NamingStrategy: schema.NamingStrategy{
-		    TablePrefix: "public.",
-	    },
-    })
-    if err != nil {
-        return nil, fmt.Errorf("error connecting to db: %w", err)
-    }
+	db, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix: "public.",
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to db: %w", err)
+	}
 
-    return db, nil
+	return db, nil
 }
-
 
 // InitGlobalDB initializes the RDS PostgreSQL connection
 func InitGlobalDB() error {
-	
+
 	db, err := GetDB()
 
 	if err != nil {
@@ -72,9 +70,6 @@ func InitGlobalDB() error {
 	if err != nil {
 		return fmt.Errorf("failed to migrate global database: %w", err)
 	}
-
-	// Seed initial data if needed
-	//seedInitialData(db)
 
 	log.Println("Successfully connected to global database")
 	return nil
@@ -259,9 +254,9 @@ func DeleteHandler(table, column, value string, db *sql.DB) error {
 	return err
 }
 
-func main () {
+func main() {
 	if err := InitGlobalDB(); err != nil {
-        	log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	log.Println("Database initialized successfully")
 }

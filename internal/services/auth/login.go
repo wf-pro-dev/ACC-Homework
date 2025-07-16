@@ -55,6 +55,12 @@ func Login(username, password string) error {
 		return errors.New(response.Error)
 	}
 
+	if err := client.SaveCookies(httpClient); err != nil {
+		return fmt.Errorf("failed to save cookies: %w", err)
+	}
+
+	//==== User specific configuration ====
+
 	userID, err := strconv.Atoi(response.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to parse user ID: %w", err)
@@ -64,9 +70,39 @@ func Login(username, password string) error {
 		return fmt.Errorf("failed to store credentials: %w", err)
 	}
 
+	db, err := local.GetLocalDB(uint(userID))
+	if err != nil {
+		return fmt.Errorf("failed to create/get local database: %w", err)
+	}
+	db = db.Debug()
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := local.InitializeSchema(tx); err != nil {
+		return fmt.Errorf("failed to initialize user database: %w", err)
+	}
+
+	if err := client.MigrateCourses(tx); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to migrate courses: %w", err)
+	}
+
+	if err := client.MigrateAssignments(tx); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to migrate assignments: %w", err)
+	}
+
+	tx.Commit()
+
+	//==== User specific configuration ====
+
 	// Save the session cookies from the client's jar to a file.
 	// The 'listen' command will load these cookies to authenticate its requests.
-	return client.SaveCookies(httpClient)
+	return nil
 }
 
 // StartListener initializes the SSE client using stored cookies and starts the connection.
@@ -97,26 +133,13 @@ func StopListener() {
 	}
 }
 
-// Logout clears all local session data.
-// func Logout() error {
-// 	// Clear stored credentials and cookies.
-// 	if err := local.ClearCredentials(); err != nil {
-// 		log.Printf("Warning: could not clear local credentials: %v", err)
-// 	}
-// 	if err := client.ClearCookies(); err != nil {
-// 		log.Printf("Warning: could not clear cookies: %v", err)
-// 	}
-// 	log.Println("Local credentials and cookies have been cleared.")
-// 	return nil
-// }
-
 // GetDaemonPIDFilePath returns the canonical path for the daemon's PID file.
 func GetDaemonPIDFilePath() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot find user home directory: %w", err)
 	}
-	configDir := filepath.Join(home, ".acc")
+	configDir := filepath.Join(home, "acc-homework")
 	// Ensure the directory exists.
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", fmt.Errorf("cannot create config directory at %s: %w", configDir, err)

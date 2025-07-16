@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strconv"
 
 	"fmt"
 	"io"
@@ -12,38 +13,11 @@ import (
 	"github.com/williamfotso/acc/internal/core/models/course"
 	"github.com/williamfotso/acc/internal/services/network"
 	"github.com/williamfotso/acc/internal/storage/local"
+	"gorm.io/gorm"
 )
 
 func GetCourses() ([]map[string]string, error) {
 
-	/*userID := uint(1)
-	db, err := local.GetLocalDB(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	deadline, err := time.Parse(time.RFC3339, assignmentData["deadline"])
-	if err != nil {
-		return nil, err
-	}
-
-	// Create local assignment
-	a := assignment.LocalAssignment{
-		Title:      assignmentData["title"],
-		Todo:       assignmentData["todo"],
-		Deadline:   deadline,
-		Link:       assignmentData["link"],
-		CourseCode: assignmentData["course_code"],
-		TypeName:   assignmentData["type_name"],
-		StatusName: assignmentData["status_name"],
-	}*/
 	var response struct {
 		Message string              `json:"message"`
 		Courses []map[string]string `json:"courses"`
@@ -78,7 +52,6 @@ func GetCourses() ([]map[string]string, error) {
 
 		if response.Error != "" {
 
-
 			return nil, errors.New(response.Error)
 
 		}
@@ -87,18 +60,7 @@ func GetCourses() ([]map[string]string, error) {
 			return nil, errors.New("no assignment data in response")
 		}
 
-	} /*else {
-		a.SyncStatus = assignment.SyncStatusPending
 	}
-
-	if err := tx.Create(&a).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("local create failed: %w", err)
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("commit failed: %w", err)
-	}*/
 
 	return response.Courses, nil
 }
@@ -195,38 +157,41 @@ func CreateCourse(courseData map[string]string) (map[string]string, error) {
 	return c.ToMap(), nil
 }
 
-/*
-func UpdateAssignment(id, column, value string) error {
-	new_client, err := NewClient()
+func MigrateCourses(db *gorm.DB) error {
+
+	count := 0
+
+	remoteCourses, err := GetCourses()
 	if err != nil {
+		fmt.Printf("ERROR : %s", err)
 		return err
 	}
 
-	updateData := map[string]interface{}{
-		"id":     id,
-		"value":  value,
-		"column": column,
-	}
+	for _, rc := range remoteCourses {
+		remote_id, err := strconv.Atoi(rc["id"])
+		if err != nil {
+			return fmt.Errorf("Error formating remote_id : %s", err)
+		}
+		localCourse := course.LocalCourse{
+			RemoteID:   uint(remote_id),
+			Code:       rc["code"],
+			Name:       rc["name"],
+			NotionID:   rc["notion_id"],
+			Duration:   rc["duration"],
+			RoomNumber: rc["room_number"],
+			SyncStatus: course.SyncStatusSynced,
+		}
 
-	jsonData, _ := json.Marshal(updateData)
+		if err := db.First(&localCourse, "remote_id = ?", remote_id).Error; err == nil {
+			continue
+		}
 
-	resp, err := new_client.Post(
-		"http://localhost:3000/acc-homework/assignment/update",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
+		if err := db.Create(&localCourse).Error; err != nil {
+			count++
+			return err
+		}
+		count++
 	}
 
 	return nil
 }
-*/

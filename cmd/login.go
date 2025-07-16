@@ -20,16 +20,15 @@ var loginCmd = &cobra.Command{
 		fmt.Printf("Password for %s: ", username)
 		password, err := gopass.GetPasswdMasked()
 		if err != nil {
-			log.Fatalf("\nError reading password: %v", err)
+			log.Fatalf("Error reading password: %v", err)
 		}
 
 		err = auth.Login(username, string(password))
 		if err != nil {
-			log.Fatalf("\nLogin failed: %v", err)
+			log.Fatalf("Login failed: %v", err)
 		}
 
-		fmt.Println("\nLogin successful!")
-		fmt.Println("Run 'acc listen' in a separate terminal to start receiving notifications.")
+		fmt.Printf("Welcome to ACC Homework! : %s \n", username)
 	},
 }
 

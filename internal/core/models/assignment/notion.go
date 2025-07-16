@@ -4,21 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/williamfotso/acc/internal/types"
 	"github.com/williamfotso/acc/internal/services"
+	"github.com/williamfotso/acc/internal/types"
 )
 
-
-// AddAssignmentToNotion adds an assignment to Notion efficiently
-func (a *Assignment) Add_Notion() (string, error) {
-	
-	assign := a.ToMap()
-
-	// Create a single rich text object for reuse
-	richTextObj := types.RichText{
+func NewRichText(content string) types.RichText {
+	return types.RichText{
 		Type: "text",
 		Text: &types.TextContent{
-			Content: "",
+			Content: content,
 			Link:    nil,
 		},
 		Annotations: &types.TextAnnotation{
@@ -29,14 +23,20 @@ func (a *Assignment) Add_Notion() (string, error) {
 			Code:          false,
 			Color:         "default",
 		},
-		PlainText: "",
+		PlainText: content,
 		Href:      nil,
 	}
+}
+
+// AddAssignmentToNotion adds an assignment to Notion efficiently
+func (a *Assignment) Add_Notion() (string, error) {
+
+	assign := a.ToMap()
 
 	// Create the request with strongly typed fields
 	req := types.PageRequest{}
 	req.Parent.Type = "database_id"
-	req.Parent.DatabaseID = a.User.AssignmentsDbId 
+	req.Parent.DatabaseID = a.User.AssignmentsDbId
 	// Set deadline
 	req.Properties = &types.Properties{
 		Deadline: types.Deadline{
@@ -79,9 +79,9 @@ func (a *Assignment) Add_Notion() (string, error) {
 		},
 
 		Link: types.Link{
-                        ID:   "jgPD",
-                        Type: "url",
-                        URL:  a.Link,
+			ID:   "jgPD",
+			Type: "url",
+			URL:  a.Link,
 		},
 	}
 	// Set TODO
@@ -89,9 +89,7 @@ func (a *Assignment) Add_Notion() (string, error) {
 		ID:   "%5DJfC",
 		Type: "rich_text",
 	}
-	todoText := richTextObj
-	todoText.Text.Content = assign["todo"]
-	todoText.PlainText = assign["todo"]
+	todoText := NewRichText(assign["todo"])
 	todo_obj.RichText = []types.RichText{todoText}
 	req.Properties.TODO = todo_obj
 
@@ -100,9 +98,7 @@ func (a *Assignment) Add_Notion() (string, error) {
 		ID:   "title",
 		Type: "title",
 	}
-	titleText := richTextObj
-	titleText.Text.Content = assign["title"]
-	titleText.PlainText = assign["title"]
+	titleText := NewRichText(assign["title"])
 	assignment_name_obj.Title = []types.RichText{titleText}
 	req.Properties.AssignmentName = assignment_name_obj
 
@@ -283,8 +279,6 @@ func (a *Assignment) Delete_Notion() (err error) {
 	req.Archived = true
 
 	_, err = services.SendNotionRequest(req, "PATCH", assign["notion_id"], a.User.NotionAPIKey)
-
-
 
 	return err
 }
