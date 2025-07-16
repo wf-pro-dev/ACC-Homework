@@ -3,9 +3,11 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/williamfotso/acc/internal/core/models/assignment"
@@ -174,7 +176,7 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		}
 
 		if response.Error != "" {
-			return nil, fmt.Errorf(response.Error)
+			return nil, errors.New(response.Error)
 		}
 
 		if response.Assignment == nil {
@@ -182,7 +184,12 @@ func CreateAssignment(assignmentData map[string]string) (map[string]string, erro
 		}
 
 		a.NotionID = response.Assignment["notion_id"].(string)
-		a.RemoteID = response.Assignment["id"].(uint)
+		remote_id, err := strconv.Atoi(response.Assignment["id"].(string))
+		if err != nil {
+			return nil, fmt.Errorf("error formating remote_id: %s", err)
+		}
+		fmt.Printf("Remote ID: %d\n", remote_id)
+		a.RemoteID = uint(remote_id)
 		a.SyncStatus = assignment.SyncStatusSynced
 
 	} else {

@@ -47,6 +47,7 @@ func UseNotifier(args []string) error {
 	var err error
 	// Try different locations until we find the binary
 	for _, path := range locations {
+
 		cmd = exec.Command(path, args...)
 		err = cmd.Run()
 		if err == nil {
@@ -112,12 +113,13 @@ func ScheduleNotifications() error {
 
 	db, err := local.GetLocalDB(userID)
 	if err != nil {
-		return fmt.Errorf("database error: %w", err)
+		return err
 	}
 
 	now := time.Now()
 
 	query := fmt.Sprintf(
+
 		"deadline BETWEEN '%s' AND '%s' AND status_name != 'Done'",
 		now.AddDate(0, 0, -1).Format(time.RFC3339),
 		now.AddDate(0, 0, 7).Format(time.RFC3339),
