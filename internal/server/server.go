@@ -1,20 +1,20 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
-	"context"
+
 	"github.com/spf13/viper"
 
-	"gorm.io/gorm"
 	"github.com/gorilla/sessions"
-	"github.com/williamfotso/acc/internal/storage/global"
 	"github.com/williamfotso/acc/internal/core/models/user"
+	"github.com/williamfotso/acc/internal/storage/global"
 	"github.com/williamfotso/acc/internal/types"
-
+	"gorm.io/gorm"
 )
 
 var sseServer *SSEServer
@@ -22,83 +22,79 @@ var sseServer *SSEServer
 // MiddleWares ! put on separate file
 
 func DBMiddleware(db *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        ctx := context.WithValue(r.Context(), "db", db)
-        next(w, r.WithContext(ctx))
-    }
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), "db", db)
+		next(w, r.WithContext(ctx))
+	}
 }
 
 // AuthMiddleware checks if the user is authenticated
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-  
-	viper.SetConfigFile(".env")
-    	err := viper.ReadInConfig()
-    	if err != nil {
-        	PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("error reading config file: %w", err))
-		return
-    	}
+	return func(w http.ResponseWriter, r *http.Request) {
 
-    	SESSION_KEY := viper.GetString("SESSION_KEY")	
+		viper.SetConfigFile(".env")
+		err := viper.ReadInConfig()
+		if err != nil {
+			PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("error reading config file: %w", err))
+			return
+		}
 
-	var store = sessions.NewCookieStore([]byte(SESSION_KEY))
-	
-        session, err := store.Get(r, "session-auth")
-        if err != nil {
-		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create session: %w",err))
-		return
+		SESSION_KEY := viper.GetString("SESSION_KEY")
+
+		var store = sessions.NewCookieStore([]byte(SESSION_KEY))
+
+		session, err := store.Get(r, "session-auth")
+		if err != nil {
+			PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create session: %w", err))
+			return
+		}
+
+		// Check if user is authenticated
+		auth, ok := session.Values["authenticated"].(bool)
+		if !ok || !auth {
+			PrintERROR(w, http.StatusUnauthorized, "Unauthorized - please login")
+			return
+		}
+
+		// You can also add the user ID to the request context if needed
+		userID, ok := session.Values["user_id"].(uint)
+		if ok {
+			ctx := context.WithValue(r.Context(), "user_id", userID)
+			r = r.WithContext(ctx)
+		}
+
+		next.ServeHTTP(w, r)
 	}
-
-
-        // Check if user is authenticated
-        auth, ok := session.Values["authenticated"].(bool)
-        if !ok || !auth {
-            PrintERROR(w, http.StatusUnauthorized, "Unauthorized - please login")
-            return
-        }
-        
-	// You can also add the user ID to the request context if needed
-        userID, ok := session.Values["user_id"].(uint)
-        if ok {
-		ctx := context.WithValue(r.Context(), "user_id", userID)
-		r = r.WithContext(ctx)
-        }
-	
-        next.ServeHTTP(w, r)
-    }
 }
 
 func StartServer() {
 
 	db, err := global.GetDB()
 	if err != nil {
-		log.Println("Error getting database",err)
-                return
+		log.Println("Error getting database", err)
+		return
 	}
-	
-	
+
 	sseServer = NewSSEServer(db)
 
-
-	http.HandleFunc("/webhooks", DBMiddleware(db,notionWebhookHandler))
+	http.HandleFunc("/webhooks", DBMiddleware(db, notionWebhookHandler))
 	http.HandleFunc("/acc-homework/events", AuthMiddleware(sseServer.SSEHandler))
 
-	http.HandleFunc("/acc-homework/register", DBMiddleware(db,RegisterHandler))
-	http.HandleFunc("/acc-homework/login", DBMiddleware(db,LoginHandler))
+	http.HandleFunc("/acc-homework/register", DBMiddleware(db, RegisterHandler))
+	http.HandleFunc("/acc-homework/login", DBMiddleware(db, LoginHandler))
 	http.HandleFunc("/acc-homework/logout", AuthMiddleware(LogoutHandler))
-	http.HandleFunc("/acc-homework/user", DBMiddleware(db,AuthMiddleware(GetUserHandler)))
+	http.HandleFunc("/acc-homework/user", DBMiddleware(db, AuthMiddleware(GetUserHandler)))
 
-	http.HandleFunc("/acc-homework/assignment", DBMiddleware(db,AuthMiddleware(CreateAssignmentHandler)))
-	http.HandleFunc("/acc-homework/assignment/get", DBMiddleware(db,AuthMiddleware(GetAssignmentHandler)))
-	http.HandleFunc("/acc-homework/assignment/update", DBMiddleware(db,AuthMiddleware(UpdateAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment", DBMiddleware(db, AuthMiddleware(CreateAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment/get", DBMiddleware(db, AuthMiddleware(GetAssignmentHandler)))
+	http.HandleFunc("/acc-homework/assignment/update", DBMiddleware(db, AuthMiddleware(UpdateAssignmentHandler)))
 
-	http.HandleFunc("/acc-homework/course", DBMiddleware(db,AuthMiddleware(CreateCourseHandler)))
+	http.HandleFunc("/acc-homework/course", DBMiddleware(db, AuthMiddleware(CreateCourseHandler)))
+	http.HandleFunc("/acc-homework/course/get", DBMiddleware(db, AuthMiddleware(GetCourseHandler)))
 
-	http.HandleFunc("/acc-homework/course/get", DBMiddleware(db,AuthMiddleware(GetCourseHandler)))
-	
 	http.HandleFunc("/notion-webhooks/test", testHandler)
 	//http.HandleFunc("/notion-webhooks", notionWebhookHandler)
-	log.Println("Server listening on :3000...") // Changed from fmt
+	log.Println("Server listening on :3000...")
 	log.Fatal(http.ListenAndServe(":3000", nil))
 }
 
@@ -108,12 +104,12 @@ func webhookTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&payload)
-        if err != nil {
-                http.Error(w, "Bad request", http.StatusBadRequest)
-                return
-        }
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
 
-        log.Printf("%s Token: %s", time.Now().Format(time.Stamp), payload.Token)
+	log.Printf("%s Token: %s", time.Now().Format(time.Stamp), payload.Token)
 }
 
 func testHandler(w http.ResponseWriter, r *http.Request) {
@@ -143,18 +139,18 @@ func PrintERROR(w http.ResponseWriter, code int, message string) {
 }
 
 func notionWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	
-	dbVal := r.Context().Value("db")
-        if dbVal == nil {
-                PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
-                return
-        }
 
-        db, ok := dbVal.(*gorm.DB)
-        if !ok {
-                PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
-                return
-        }
+	dbVal := r.Context().Value("db")
+	if dbVal == nil {
+		PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+		return
+	}
+
+	db, ok := dbVal.(*gorm.DB)
+	if !ok {
+		PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+		return
+	}
 
 	// 1. Verify it's a POST request
 	if r.Method != "POST" {
@@ -182,12 +178,11 @@ func notionWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user_notion_id := payload.Authors[0].Id
-	
-	u, err := user.Get_User_by_NotionID(user_notion_id,db)
+
+	u, err := user.Get_User_by_NotionID(user_notion_id, db)
 	if err != nil {
 		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error getting user: %s", err))
 	}
-
 
 	// 4. Handle the payload
 	switch payload.Type {

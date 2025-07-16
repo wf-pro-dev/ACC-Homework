@@ -117,8 +117,6 @@ func migrateAssignments(localDB *gorm.DB) error {
 		return err
 	}
 
-	count := 0
-
 	for _, ra := range remoteAssignments {
 
 		deadline, err := time.Parse(time.DateOnly, ra["deadline"])

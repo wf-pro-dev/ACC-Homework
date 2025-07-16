@@ -5,36 +5,34 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	
-	"gorm.io/gorm"
+
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/core/models/course"
 	"github.com/williamfotso/acc/internal/core/models/user"
 	"github.com/williamfotso/acc/internal/types"
+	"gorm.io/gorm"
 )
 
 func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.NotionWebhookPayload, u *user.User) {
-	
 
 	dbVal := r.Context().Value("db")
-        if dbVal == nil {
-                PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
-                return
-        }
-        
+	if dbVal == nil {
+		PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+		return
+	}
 
-        db, ok := dbVal.(*gorm.DB)
-        if !ok {
-                PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
-                return
-        }	
-	
+	db, ok := dbVal.(*gorm.DB)
+	if !ok {
+		PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+		return
+	}
+
 	tx := db.Begin()
-        defer func() {
-                if r := recover(); r != nil {
-                        tx.Rollback()
-                }
-        }()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	// 1. Get the page id
 	page_id := payload.Entity.Id
@@ -59,7 +57,7 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
 	course_notion_id := properties.Courses.Relation[0].ID
 	course_code := course.Get_Course_byNotionID(course_notion_id, db).Code
 
-	deadline, err := time.Parse(time.DateOnly ,properties.Deadline.Date.Start)
+	deadline, err := time.Parse(time.DateOnly, properties.Deadline.Date.Start)
 	if err != nil {
 
 		PrintERROR(w, http.StatusInternalServerError,
@@ -67,38 +65,37 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
 		return
 	}
 
-	PrintLog(fmt.Sprintf("User id : %d,\n page_id : %s\n ",u.ID, page_id))
+	PrintLog(fmt.Sprintf("User id : %d,\n page_id : %s\n ", u.ID, page_id))
 
 	a := assignment.Assignment{
-                UserID:		u.ID,
-                CourseCode:	course_code,
-                Title:		properties.AssignmentName.Title[0].PlainText,
-                TypeName:	properties.Type.Select["name"],
-                Deadline:	deadline,
-                Todo:		properties.TODO.RichText[0].PlainText,
-                StatusName:	properties.Status.Status.Name,
-                Link:		properties.Link.URL,
-		NotionID:	page_id}
+		UserID:     u.ID,
+		CourseCode: course_code,
+		Title:      properties.AssignmentName.Title[0].PlainText,
+		TypeName:   properties.Type.Select["name"],
+		Deadline:   deadline,
+		Todo:       properties.TODO.RichText[0].PlainText,
+		StatusName: properties.Status.Status.Name,
+		Link:       properties.Link.URL,
+		NotionID:   page_id}
 
-        result := tx.Create(&a)
-        if result.Error != nil {
+	result := tx.Create(&a)
+	if result.Error != nil {
 		tx.Rollback()
-                PrintERROR(w, http.StatusConflict, fmt.Sprintf("Error creating assignment in database",err))
-                return
-        }
-	
+		PrintERROR(w, http.StatusConflict, fmt.Sprintf("Error creating assignment in database", err))
+		return
+	}
+
 	tx.Commit()
 
-
 	a_map := a.ToMap()
-	
+
 	a_map["deadline"] = a.Deadline.Format(time.RFC3339)
 
 	a_map["deadline"] = a.CreatedAt.Format(time.RFC3339)
-	
+
 	a_map["deadline"] = a.UpdatedAt.Format(time.RFC3339)
-	
-	PrintLog(fmt.Sprintf("Assignment created: %v by user %v",a_map["title"],u.ID))
+
+	PrintLog(fmt.Sprintf("Assignment created: %v by user %v", a_map["title"], u.ID))
 
 	if sseServer != nil {
 		sseServer.SendNotification(
@@ -109,6 +106,6 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
 			fmt.Sprintf("New assignment created: %s", a.Title),
 			a_map,
 		)
-	
+
 	}
 }

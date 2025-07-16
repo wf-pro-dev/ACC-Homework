@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/williamfotso/acc/internal/core/models/assignment"
-	"github.com/williamfotso/acc/internal/core/services/notifier"
+	"github.com/williamfotso/acc/internal/services/notifier"
 	"github.com/williamfotso/acc/internal/storage/local"
 )
 
