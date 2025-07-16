@@ -2,54 +2,98 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"path/filepath"
-	"net/http"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 const (
-	appName = "acc-homework"  // Change this to your application name
+	appName = "acc-homework" // Change this to your application name
 )
 
-// getCookiePath returns the path for cookies in config_dir/your-cli-app/cookies/cookies.txt
-func getCookiePath() (string, error) {
+// getCookieFilePath returns the canonical path for the cookie file.
+func getCookieFilePath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Create app directory and cookies subdirectory
 	appDir := filepath.Join(configDir, appName)
 	cookiesDir := filepath.Join(appDir, "cookies")
-	
+
 	// Create directories with 0755 permissions (rwx for owner, rx for others)
 	if err := os.MkdirAll(cookiesDir, 0755); err != nil {
 		return "", err
 	}
-	
+
 	return filepath.Join(cookiesDir, "cookies.txt"), nil
 }
 
-// SaveCookies stores cookies to the cookies.txt file
-func SaveCookies(cookies []*http.Cookie) error {
-	path, err := getCookiePath()
+// SaveCookies serializes the cookies from the client's jar and saves them to a file.
+func SaveCookies(client *http.Client) error {
+	cookieFile, err := getCookieFilePath()
 	if err != nil {
 		return err
 	}
 
-	// Create or truncate the file with 0600 permissions (rw for owner only)
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	cookies := client.Jar.Cookies(nil) // Pass nil to get all cookies
+	data, err := json.MarshalIndent(cookies, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not marshal cookies: %w", err)
 	}
-	defer file.Close()
 
-	return json.NewEncoder(file).Encode(cookies)
+	return ioutil.WriteFile(cookieFile, data, 0600)
 }
 
-// LoadCookies reads cookies from cookies.txt
+// NewClientWithCookies creates a new http.Client and loads cookies from the file.
+func NewClientWithCookies() (*http.Client, error) {
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		return nil, err
+	}
+
+	cookieFile, err := getCookieFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	// It's okay if the cookie file doesn't exist yet.
+	if _, err := os.Stat(cookieFile); os.IsNotExist(err) {
+		log.Println("No cookie file found, creating new client.")
+		return &http.Client{Jar: jar}, nil
+	}
+
+	data, err := ioutil.ReadFile(cookieFile)
+	if err != nil {
+		return nil, fmt.Errorf("could not read cookie file: %w", err)
+	}
+
+	var cookies []*http.Cookie
+	if err := json.Unmarshal(data, &cookies); err != nil {
+		return nil, fmt.Errorf("could not unmarshal cookies: %w", err)
+	}
+
+	// Assuming the cookies are for the correct domain.
+	if len(cookies) > 0 {
+		// We need a URL to set cookies in the jar.
+		// This should be the base URL of your service.
+		url, _ := url.Parse("https://newsroom.dedyn.io")
+		jar.SetCookies(url, cookies)
+	}
+
+	return &http.Client{Jar: jar}, nil
+}
+
 func LoadCookies() ([]*http.Cookie, error) {
-	path, err := getCookiePath()
+	path, err := getCookieFilePath()
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +112,15 @@ func LoadCookies() ([]*http.Cookie, error) {
 	return cookies, err
 }
 
-// ClearCookies removes the cookies.txt file
+// ClearCookies removes the cookie file from disk.
 func ClearCookies() error {
-	path, err := getCookiePath()
+	cookieFile, err := getCookieFilePath()
 	if err != nil {
 		return err
 	}
-	return os.Remove(path)
+	// It's not an error if the file doesn't exist.
+	if err := os.Remove(cookieFile); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }

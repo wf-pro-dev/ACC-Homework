@@ -9,122 +9,117 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/williamfotso/acc/internal/services/client"
 	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 var (
-	sseClient     *client.SSEClient
-	sseCancelFunc context.CancelFunc // Add this to control SSE lifecycle
+	// This will be managed by the 'listen' command's lifecycle.
+	sseCancelFunc context.CancelFunc
 )
 
-func GetSSEClient() *client.SSEClient {
-	return sseClient
-}
-
+// Login handles only authentication and saving the session cookie to a file.
 func Login(username, password string) error {
-
-	new_client, err := client.NewClient()
+	// Create a new http client for the login request.
+	httpClient, err := client.NewClient()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create http client: %w", err)
 	}
 
-	loginData := map[string]string{
-		"username": username,
-		"password": password,
-	}
+	loginData := map[string]string{"username": username, "password": password}
 	jsonData, _ := json.Marshal(loginData)
 
-	resp, err := new_client.Post(
-		"https://newsroom.dedyn.io/acc-homework/login",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
+	resp, err := httpClient.Post("https://newsroom.dedyn.io/acc-homework/login", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return fmt.Errorf("http post failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("login request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var response struct {
-		Message  string `json:"message"`
-		Username string `json:"username"`
-		UserID   string `json:"user_id"`
-		Error    string `json:"error,omitempty"`
+		UserID string `json:"user_id"`
+		Error  string `json:"error,omitempty"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return fmt.Errorf("failed to decode response: %w", err)
+		return fmt.Errorf("failed to decode login response: %w", err)
 	}
-
 	if response.Error != "" {
 		return errors.New(response.Error)
 	}
 
-	id, err := strconv.ParseUint(response.UserID, 10, 64)
+	userID, err := strconv.Atoi(response.UserID)
 	if err != nil {
-		return fmt.Errorf("invalid user ID: %w", err)
+		return fmt.Errorf("failed to parse user ID: %w", err)
 	}
 
-	// Store Credentials to handle Local operations
-	if err := local.StoreCredentials(
-		uint(id),
-		response.Username,
-	); err != nil {
-		log.Printf("Failed to store local credentials: %v", err)
-		// Continue anyway - this is non-fatal
+	if err := local.StoreCredentials(uint(userID), username); err != nil {
+		return fmt.Errorf("failed to store credentials: %w", err)
 	}
-	// Open the DDE connection
-	// Open the SSE connection
-	cookies := new_client.Jar.Cookies(nil)
-	sseClient = client.NewSSEClient(new_client)
 
-	// Create a context we can cancel
-	ctx, cancel := context.WithCancel(context.Background())
-	sseCancelFunc = cancel
-
-	// Start SSE connection with retries
-	go func() {
-		retryDelay := time.Second
-		maxRetries := 5
-
-		for i := 0; i < maxRetries; i++ {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				err := sseClient.Connect()
-				if err == nil {
-					log.Println("SSE connection established")
-					return
-				}
-
-				log.Printf("SSE connection attempt %d failed: %v", i+1, err)
-				if i < maxRetries-1 {
-					time.Sleep(retryDelay)
-					retryDelay *= 2 // Exponential backoff
-				}
-			}
-		}
-		log.Println("Max SSE connection attempts reached")
-	}()
-
-	return client.SaveCookies(cookies)
+	// Save the session cookies from the client's jar to a file.
+	// The 'listen' command will load these cookies to authenticate its requests.
+	return client.SaveCookies(httpClient)
 }
 
-// Add this new function to clean up SSE
-func CleanupSSE() {
+// StartListener initializes the SSE client using stored cookies and starts the connection.
+func StartListener(ctx context.Context) (*client.SSEClient, error) {
+	// Create a client and load the cookies saved by the login command.
+	httpClient, err := client.NewClientWithCookies()
+	if err != nil {
+		return nil, fmt.Errorf("could not create http client for listener: %w", err)
+	}
+
+	// Create a new cancellable context for the SSE client.
+	var sseCtx context.Context
+	sseCtx, sseCancelFunc = context.WithCancel(ctx)
+
+	sseClient := client.NewSSEClient(httpClient)
+
+	// The connect method now accepts a context for graceful shutdown.
+	go sseClient.Connect(sseCtx)
+
+	return sseClient, nil
+}
+
+// StopListener signals the SSE connection to close.
+func StopListener() {
 	if sseCancelFunc != nil {
-		sseCancelFunc()
+		log.Println("Signaling SSE client to disconnect...")
+		sseCancelFunc() // This cancels the context passed to sseClient.Connect
 	}
-	if sseClient != nil {
-		sseClient.Disconnect()
+}
+
+// Logout clears all local session data.
+// func Logout() error {
+// 	// Clear stored credentials and cookies.
+// 	if err := local.ClearCredentials(); err != nil {
+// 		log.Printf("Warning: could not clear local credentials: %v", err)
+// 	}
+// 	if err := client.ClearCookies(); err != nil {
+// 		log.Printf("Warning: could not clear cookies: %v", err)
+// 	}
+// 	log.Println("Local credentials and cookies have been cleared.")
+// 	return nil
+// }
+
+// GetDaemonPIDFilePath returns the canonical path for the daemon's PID file.
+func GetDaemonPIDFilePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot find user home directory: %w", err)
 	}
+	configDir := filepath.Join(home, ".acc")
+	// Ensure the directory exists.
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return "", fmt.Errorf("cannot create config directory at %s: %w", configDir, err)
+	}
+	return filepath.Join(configDir, "daemon.pid"), nil
 }

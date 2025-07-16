@@ -9,12 +9,6 @@ import (
 )
 
 func Logout() error {
-	
-	// Disconnect SSE before logging out
-	if sseClient != nil {
-		sseClient.Disconnect()
-		sseClient = nil
-	}
 
 	// Create new client that will load existing cookies
 	c, err := client.NewClient()

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"syscall"
+	"log"
 
 	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
@@ -12,30 +12,24 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login [username]",
 	Short: "Login to the system",
-	Long:  `Authenticate with the server using your username and password`,
-	Args:  cobra.ExactArgs(1), // Requires exactly 1 argument (username)
+	Long:  `Authenticate with the server and save session credentials.`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		username := args[0]
 
-		// Prompt for password with masking
 		fmt.Printf("Password for %s: ", username)
 		password, err := gopass.GetPasswdMasked()
 		if err != nil {
-			fmt.Println("\nError reading password:", err)
-			return
+			log.Fatalf("\nError reading password: %v", err)
 		}
 
-		// Perform login
 		err = auth.Login(username, string(password))
 		if err != nil {
-			fmt.Println("\nLogin failed:", err)
-			syscall.Exit(1)
+			log.Fatalf("\nLogin failed: %v", err)
 		}
 
-		// Start event handler
-		eventHandler.Start()
-
 		fmt.Println("\nLogin successful!")
+		fmt.Println("Run 'acc listen' in a separate terminal to start receiving notifications.")
 	},
 }
 

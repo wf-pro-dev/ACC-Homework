@@ -27,3 +27,5 @@ func NewClient() (*http.Client, error) {
 		Jar: &CookieJar{cookies: cookies},
 	}, nil
 }
+
+// Add this new function to clean up SSE

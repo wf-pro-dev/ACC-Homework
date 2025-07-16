@@ -1,4 +1,4 @@
-package main
+package notifier
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/williamfotso/acc/database"
+	"github.com/williamfotso/acc/internal/core/models/assignment"
+	"github.com/williamfotso/acc/internal/storage/local"
 )
 
 func getUntilDeadline(deadline time.Time) string {
@@ -46,7 +47,6 @@ func UseNotifier(args []string) error {
 	var err error
 	// Try different locations until we find the binary
 	for _, path := range locations {
-		cmd = exec.Command(path, "-group", "ACC", "-remove", "ACC")
 		cmd = exec.Command(path, args...)
 		err = cmd.Run()
 		if err == nil {
@@ -93,11 +93,10 @@ func sendNotification(assign map[string]string) error {
 	}
 
 	// Send notification if the assignment is not done
-	if assign["status"] != "done" {
-		err = UseNotifier(args)
-		if err != nil {
-			return fmt.Errorf("failed to send notification: %w", err)
-		}
+
+	err = UseNotifier(args)
+	if err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
 	}
 
 	return nil
@@ -105,7 +104,13 @@ func sendNotification(assign map[string]string) error {
 
 // scheduleNotifications checks for upcoming assignments and notifies
 func ScheduleNotifications() error {
-	db, err := database.GetDB()
+
+	userID, err := local.GetCurrentUserID()
+	if err != nil {
+		return fmt.Errorf("failed to get current user ID: %w", err)
+	}
+
+	db, err := local.GetLocalDB(userID)
 	if err != nil {
 		return fmt.Errorf("database error: %w", err)
 	}
@@ -113,20 +118,17 @@ func ScheduleNotifications() error {
 	now := time.Now()
 
 	query := fmt.Sprintf(
-		"SELECT * FROM assignements WHERE deadline BETWEEN '%s' AND '%s' ORDER BY deadline ASC",
-		now.Format(time.DateOnly),
-		now.AddDate(0, 0, 7).Format(time.DateOnly),
+		"deadline BETWEEN '%s' AND '%s' AND status_name != 'Done'",
+		now.AddDate(0, 0, -1).Format(time.RFC3339),
+		now.AddDate(0, 0, 7).Format(time.RFC3339),
 	)
 
-	assignments, err := database.GetHandler(query, db)
-
-	if err != nil {
-		return fmt.Errorf("query error: %w", err)
-	}
+	assignments := []assignment.LocalAssignment{}
+	db.Model(&assignment.LocalAssignment{}).Where(query).Order("deadline ASC").Find(&assignments)
 
 	for _, assign := range assignments {
-		if err := sendNotification(assign); err != nil {
-			fmt.Printf("Error notifying for assignment %s: %v\n", assign["title"], err)
+		if err := sendNotification(assign.ToMap()); err != nil {
+			fmt.Printf("Error notifying for assignment %s: %v\n", assign.Title, err)
 		}
 		time.Sleep(5 * time.Second) // Space out notifications
 	}
