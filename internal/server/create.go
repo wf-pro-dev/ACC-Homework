@@ -69,7 +69,7 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
 
 	PrintLog(fmt.Sprintf("User id : %d,\n page_id : %s\n ",u.ID, page_id))
 
-	aVal := assignment.Assignment{
+	a := assignment.Assignment{
                 UserID:		u.ID,
                 CourseCode:	course_code,
                 Title:		properties.AssignmentName.Title[0].PlainText,
@@ -80,7 +80,7 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
                 Link:		properties.Link.URL,
 		NotionID:	page_id}
 
-        result := tx.Create(&aVal)
+        result := tx.Create(&a)
         if result.Error != nil {
 		tx.Rollback()
                 PrintERROR(w, http.StatusConflict, fmt.Sprintf("Error creating assignment in database",err))
@@ -88,33 +88,27 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
         }
 	
 	tx.Commit()
-	/*notification_id := fmt.Sprintf("%s-created", assignment["notion_id"])
-	title := fmt.Sprintf("%s: %s", assignment["course_code"], assignment["title"])
-	subtitle := fmt.Sprintf("Created at %s", time.Now().Format(time.Stamp))
-	message := "New assignment created"
 
-	args := []string{
-		"-group", notification_id,
-		"-title", title,
-		"-subtitle", subtitle,
-		"-message", message,
-		"-sound", "Frog",
-		"-timeout", "5", // Notification stays for 30 seconds
+
+	a_map := a.ToMap()
+	
+	a_map["deadline"] = a.Deadline.Format(time.RFC3339)
+
+	a_map["deadline"] = a.CreatedAt.Format(time.RFC3339)
+	
+	a_map["deadline"] = a.UpdatedAt.Format(time.RFC3339)
+	
+	PrintLog(fmt.Sprintf("Assignment created: %v by user %v",a_map["title"],u.ID))
+
+	if sseServer != nil {
+		sseServer.SendNotification(
+			u.ID,
+			"create",
+			"assignment",
+			a.NotionID,
+			fmt.Sprintf("New assignment created: %s", a.Title),
+			a_map,
+		)
+	
 	}
-
-	err = notifier.UseNotifier(args)
-	if err != nil {
-		PrintERROR(w, http.StatusInternalServerError,
-			fmt.Sprintf("Error sending notification: %s", err))
-	}
-
-	time.Sleep(10 * time.Second) // Wait for the notification to be sent
-
-	err = notifier.UseNotifier([]string{"-remove", notification_id})
-	if err != nil {
-		PrintERROR(w, http.StatusInternalServerError,
-			fmt.Sprintf("Error removing notification: %s", err))
-	}*/
-
-	PrintLog(fmt.Sprintf("Assignment created: %+v %s", aVal.NotionID, aVal.Title))
 }

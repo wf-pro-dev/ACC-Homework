@@ -89,15 +89,13 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload types.
 				return
 			} 
 
-			tx.Commit()
-		
 			if sseServer != nil {
 				sseServer.SendNotification(
 					u.ID,
 					"update",
 					"assignment",
 					a.NotionID,
-					fmt.Sprintf("Assignment updated: %s", a.Title),
+					fmt.Sprintf("Assignment updated: %s %s is now %s", a.Title, column, value),
 					map[string]string{
 						"id":		strconv.Itoa(int(a.ID)),	
 						"column":	column,
@@ -108,34 +106,9 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload types.
 				PrintLog("sseServer is nil\n")
 			}
 
-			/*notification_id := fmt.Sprintf("%s-%s-%s", assignment.NotionID, column, value)
-			title := fmt.Sprintf("%s: %s", assignment.CourseCode, assignment.Title)
-			subtitle := fmt.Sprintf("Updated at %s", time.Now().Format(time.Stamp))
-			message := fmt.Sprintf("%s is now %s", column, value)
-
-			args := []string{
-				"-group", notification_id,
-				"-title", title,
-				"-subtitle", subtitle,
-				"-message", message,
-				"-sound", "Frog",
-				"-timeout", "5", // Notification stays for 30 seconds
-			}
-
-			err = notifier.UseNotifier(args)
-			if err != nil {
-				PrintERROR(w, http.StatusInternalServerError,
-					fmt.Sprintf("Error sending notification: %s", err))
-			}
-			time.Sleep(10 * time.Second) // Wait for the notification to be sent
-
-			err = notifier.UseNotifier([]string{"-remove", notification_id})
-			if err != nil {
-				PrintERROR(w, http.StatusInternalServerError,
-					fmt.Sprintf("Error removing notification: %s", err))
-			}*/
 		}
 	}
+	tx.Commit()
 
 }
 

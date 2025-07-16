@@ -59,10 +59,11 @@ func (s *SSEServer) SendToUser(userID uint, message []byte) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	
-	PrintLog(fmt.Sprintf("Active Clients : %s\n",s.clients))
+	s.logActiveClients()	
 	if client, ok := s.clients[userID]; ok {
 		select {
 		case client.Messages <- message:
+			PrintLog(fmt.Sprintf("new SSE message for user id : %d", userID))
 			return true
 		default:
 			// Channel full, client might be slow
@@ -91,11 +92,26 @@ func (s *SSEServer) logActiveClients() {
     PrintLog(fmt.Sprintf("Active Clients: %v", s.clients))
 }
 
+
+type noTimeoutWriter struct {
+    http.ResponseWriter
+}
+
+func (w *noTimeoutWriter) Write(p []byte) (int, error) {
+    // Disable write timeout
+    if conn, _, err := w.ResponseWriter.(http.Hijacker).Hijack(); err == nil {
+        conn.SetWriteDeadline(time.Time{})
+        conn.Close()
+    }
+    return w.ResponseWriter.Write(p)
+}
+
 func (s *SSEServer) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	
-	PrintLog(fmt.Sprintf("SSE connection attempt from %s", r.RemoteAddr))
-	PrintLog(fmt.Sprintf("Headers: %v", r.Header))
 
+	PrintLog(fmt.Sprintf("SSE connection attempt from %s", r.RemoteAddr))
+
+	
 	// Get user from context (set by AuthMiddleware)
 	userIDVal := r.Context().Value("user_id")
 	if userIDVal == nil {
@@ -109,15 +125,13 @@ func (s *SSEServer) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-	PrintLog(fmt.Sprintf("Context: %+v", ctx))
-
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("X-Accel-Buffering", "no")
+
 
 	// Create a flusher
 	flusher, ok := w.(http.Flusher)
@@ -129,36 +143,35 @@ func (s *SSEServer) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	// Add client to server
 	client := s.AddClient(userID)
    	s.logActiveClients()
-
+	
 	defer func() {
 		PrintLog(fmt.Sprintf("Removing client %d (reason: connection closing)", int(userID)))
 		s.RemoveClient(userID)
 	}()
 
-	heartbeatTicker := time.NewTicker(15 * time.Second)
-	defer heartbeatTicker.Stop()
 
 	// Send initial connection message
-	fmt.Fprintf(w, "event: connected\ndata: %s\n\n", "SSE connection established")
-	flusher.Flush()
+	//fmt.Fprintf(w, "event: connected\ndata: %s\n\n", "SSE connection established")
+	//flusher.Flush()
 
 	// Keep connection alive and send messages
+	heartbeatTicker := time.NewTicker(15 * time.Second)
+	defer heartbeatTicker.Stop()
+	
 	for {
 		select {
 		case msg := <-client.Messages:
 			fmt.Fprintf(w, "data: %s\n\n", msg)
-			PrintLog(fmt.Sprintf("new SSE message : %s", msg))
 			flusher.Flush()
 		case <-heartbeatTicker.C:
 			// Send heartbeat to keep connection alive
 			// Verify client is still active
-			if time.Since(client.LastActive) > 90*time.Second {
+			/*if time.Since(client.LastActive) > 90*time.Second {
 			    PrintLog(fmt.Sprintf("Client %d timed out", userID))
 			    return
-			}
+			}*/
 			client.LastActive = time.Now()
 			fmt.Fprintf(w, ": heartbeat\n\n")
-			PrintLog("Sent heartbeat")
 			flusher.Flush()
 		case <-r.Context().Done():
 			PrintLog(fmt.Sprintf("Client %d disconnected (context canceled)", userID))
