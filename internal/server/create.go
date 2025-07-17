@@ -91,9 +91,9 @@ func WebhookCreateHandler(w http.ResponseWriter, r *http.Request, payload types.
 
 	a_map["deadline"] = a.Deadline.Format(time.RFC3339)
 
-	a_map["deadline"] = a.CreatedAt.Format(time.RFC3339)
+	a_map["created_at"] = a.CreatedAt.Format(time.RFC3339)
 
-	a_map["deadline"] = a.UpdatedAt.Format(time.RFC3339)
+	a_map["updated_at"] = a.UpdatedAt.Format(time.RFC3339)
 
 	PrintLog(fmt.Sprintf("Assignment created: %v by user %v", a_map["title"], u.ID))
 

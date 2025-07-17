@@ -271,6 +271,9 @@ func UpdateAssignmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	PrintLog(fmt.Sprintf("user_id %s column %s value %s",
+			userIDVal, updateData.Column, value))
+	
 	tx.Commit()
 
 }

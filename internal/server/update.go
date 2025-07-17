@@ -78,6 +78,7 @@ func WebhookUpdateHandler(w http.ResponseWriter, r *http.Request, payload types.
 			if err != nil {
 				PrintERROR(w, http.StatusInternalServerError,
 					fmt.Sprintf("Error getting assignment: %s", err))
+				return
 			}
 
 			if err := tx.Exec(fmt.Sprintf("UPDATE assignments SET %s = ?, updated_at = ? WHERE id = ?",column),

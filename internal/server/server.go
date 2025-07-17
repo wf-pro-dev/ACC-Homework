@@ -93,7 +93,6 @@ func StartServer() {
 	http.HandleFunc("/acc-homework/course/get", DBMiddleware(db, AuthMiddleware(GetCourseHandler)))
 
 	http.HandleFunc("/notion-webhooks/test", testHandler)
-	//http.HandleFunc("/notion-webhooks", notionWebhookHandler)
 	log.Println("Server listening on :3000...")
 	log.Fatal(http.ListenAndServe(":3000", nil))
 }
