@@ -93,6 +93,7 @@ func InitializeSchema(db *gorm.DB) error {
 		&models.LocalAssignmentType{},
 		&models.LocalAssignmentStatus{},
 		&assignment.LocalAssignment{},
+		&models.LocalUpdate{},
 	)
 
 	if err != nil {

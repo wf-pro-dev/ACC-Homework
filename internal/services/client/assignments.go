@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/williamfotso/acc/internal/core/models"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/services/network"
 	"github.com/williamfotso/acc/internal/storage/local"
@@ -182,6 +183,8 @@ func UpdateAssignment(id, column, value string) error {
 		return err
 	}
 
+	db = db.Debug()
+
 	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -201,45 +204,82 @@ func UpdateAssignment(id, column, value string) error {
 		return err
 	}
 
-	if network.IsOnline() {
+	isOnline := network.IsOnline()
 
-		new_client, err := NewClient()
+	if isOnline {
+
+		err = SendUpdate(id, column, value)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		updateData := map[string]interface{}{
-			"id":     id,
-			"value":  value,
-			"column": column,
+	} else {
+
+		int_id, err := strconv.Atoi(id)
+		if err != nil {
+			return fmt.Errorf("error formating id: %s", err)
 		}
 
-		jsonData, _ := json.Marshal(updateData)
-
-		resp, err := new_client.Post(
-			"https://newsroom.dedyn.io/acc-homework/assignment/update",
-			"application/json",
-			bytes.NewBuffer(jsonData),
-		)
-
+		err = tx.Model(&local_assignment).Update("sync_status", assignment.SyncStatusPending).Error
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			tx.Rollback()
-			body, _ := io.ReadAll(resp.Body)
-			return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
+		update := models.LocalUpdate{
+			Entity:   models.Assignment,
+			EntityID: uint(int_id),
+			Column:   column,
+			Value:    value,
 		}
+
+		if err := tx.Create(&update).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("local update failed: %w", err)
+		}
+
 	}
 
 	err = tx.Commit().Error
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func SendUpdate(id, column, value string) error {
+
+	new_client, err := NewClient()
+	if err != nil {
+
+		return err
+	}
+
+	updateData := map[string]interface{}{
+		"id":     id,
+		"value":  value,
+		"column": column,
+	}
+
+	jsonData, _ := json.Marshal(updateData)
+
+	resp, err := new_client.Post(
+		"https://newsroom.dedyn.io/acc-homework/assignment/update",
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil

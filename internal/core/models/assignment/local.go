@@ -50,6 +50,7 @@ func (a *LocalAssignment) ToMap() map[string]string {
 		"status_name": a.StatusName,
 		"link":        a.Link,
 		"notion_id":   a.NotionID,
+		"sync_status": string(a.SyncStatus),
 	}
 }
 

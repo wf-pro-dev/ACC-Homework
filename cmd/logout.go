@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -54,6 +55,6 @@ var logoutCmd = &cobra.Command{
 		if err := auth.Logout(); err != nil {
 			log.Fatalf("Logout failed: %v", err)
 		}
-		log.Println("Logout successful.")
+		fmt.Println("Logout successful.")
 	},
 }

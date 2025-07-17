@@ -1,85 +1,108 @@
 package sync
 
-import  (
+import (
+	"strconv"
+	"time"
 
+	"github.com/williamfotso/acc/internal/core/models"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
-	"github.com/williamfotso/acc/internal/core/models/courses"
+	"github.com/williamfotso/acc/internal/core/models/course"
+	"github.com/williamfotso/acc/internal/services/client"
+	"gorm.io/gorm"
 )
 
-type SyncService struct {
-    localDB  *gorm.DB // User's local SQLite DB
-    remoteDB *gorm.DB // Central PostgreSQL DB
+func Sync(db *gorm.DB) error {
+	db = db.Debug()
+
+	if err := SyncAssignment(db); err != nil {
+		return err
+	}
+	if err := SyncCourse(db); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *SyncService) SyncAssignment() error {
-    var pending []assignment.LocalAssignment
-    if err := s.localDB.Model(&assignment.LocalAssignment{}).Where("sync_status = ?", assignment.SyncStatusPending).Find(&pending).Error; err != nil {
-        return err
-    }
+func SyncAssignment(db *gorm.DB) error {
+	var pending []assignment.LocalAssignment
+	if err := db.Model(&assignment.LocalAssignment{}).Where("sync_status = ?", assignment.SyncStatusPending).Find(&pending).Error; err != nil {
+		return err
+	}
 
-    return s.remoteDB.Transaction(func(tx *gorm.DB) error {
-        for _, local := range pending {
-            remote := assignment.Assignment{
-                Title:       local.Title,
-                Todo:        local.Todo,
-                Deadline:    local.Deadline,
-                Link:        local.Link,
-                CourseCode:  local.CourseCode,
-                TypeName:    local.TypeName,
-                StatusName:  local.StatusName,
-                UserID:      local.UserID,
-            }
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, local := range pending {
 
-            if err := tx.Create(&remote).Error; err != nil {
-                return err
-            }
+			var remote map[string]string
+			var err error
 
-            // Update local record
-            if err := s.localDB.Model(&local).Updates(map[string]interface{}{
-                "notion_id":   remote.NotionID,
-                "sync_status": assignment.yncStatusSynced,
-                "updated_at":  time.Now(),
-            }).Error; err != nil {
-                return err
-            }
-        }
-        return nil
-    })
+			if local.NotionID == "" {
+				remote, err = client.CreateAssignment(local.ToMap())
+				if err != nil {
+					return err
+				}
+
+			} else {
+
+				var update models.LocalUpdate
+				if err = tx.Model(&models.LocalUpdate{}).Where("entity = ? AND entity_id = ?", models.Assignment, local.RemoteID).First(&update).Error; err != nil {
+					return err
+				}
+
+				id := strconv.Itoa(int(local.RemoteID))
+
+				err = client.SendUpdate(id, update.Column, update.Value)
+				if err != nil {
+					return err
+				}
+
+				if tx.Delete(&update).Error != nil {
+					return err
+				}
+
+				remote = local.ToMap()
+			}
+
+			// Update local record
+			if err := tx.Model(&local).Updates(map[string]interface{}{
+				"notion_id":   remote["notion_id"],
+				"sync_status": assignment.SyncStatusSynced,
+				"updated_at":  time.Now(),
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
+func SyncCourse(db *gorm.DB) error {
+	var pending []course.LocalCourse
+	if err := db.Model(&course.LocalCourse{}).Where("sync_status = ?", course.SyncStatusPending).Find(&pending).Error; err != nil {
+		return err
+	}
 
-func (s *SyncService) SyncCourse() error {
-    var pending []course.LocalCourse
-    if err := s.localDB.Model(&course.LocalCourse{}).Where("sync_status = ?", coursee.SyncStatusPending).Find(&pending).Error; err != nil {
-        return err
-    }
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, local := range pending {
 
-    return s.remoteDB.Transaction(func(tx *gorm.DB) error {
-        for _, local := range pending {
-            remote := assignment.Course{
-                Title:       local.Title,
-                Todo:        local.Todo,
-                Deadline:    local.Deadline,
-                Link:        local.Link,
-                CourseCode:  local.CourseCode,
-                TypeName:    local.TypeName,
-                StatusName:  local.StatusName,
-                UserID:      local.UserID,
-            }
+			var remote map[string]string
+			var err error
 
-            if err := tx.Create(&remote).Error; err != nil {
-                return err
-            }
+			if local.NotionID == "" {
+				remote, err = client.CreateCourse(local.ToMap())
+				if err != nil {
+					return err
+				}
+			}
 
-            // Update local record
-            if err := s.localDB.Model(&local).Updates(map[string]interface{}{
-                "notion_id":   remote.NotionID,
-                "sync_status": assignment.yncStatusSynced,
-                "updated_at":  time.Now(),
-            }).Error; err != nil {
-                return err
-            }
-        }
-        return nil
-    })
+			// Update local record
+			if err := tx.Model(&local).Updates(map[string]interface{}{
+				"notion_id":   remote["notion_id"],
+				"sync_status": course.SyncStatusSynced,
+				"updated_at":  time.Now(),
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

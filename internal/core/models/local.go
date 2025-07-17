@@ -1,5 +1,10 @@
 package models
 
+import (
+	"strconv"
+
+	"gorm.io/gorm"
+)
 
 // AssignmentType defines types like HW, Exam
 type LocalAssignmentType struct {
@@ -9,21 +14,11 @@ type LocalAssignmentType struct {
 	NotionID string
 }
 
-/*func Get_Local_AssignmentType_byName(name string, db *gorm.DB) *AssignmentType {
-	assignmentType := &AssignmentType{}
-	err := db.Where("name = ?", name).First(assignmentType).Error
-	if err != nil {
-		log.Fatalln("Error getting assignment type with name: ", err)
-		return nil
-	}
-	return assignmentType
-}*/
-
 func (a *LocalAssignmentType) ToMap() map[string]string {
 	return map[string]string{
-		"id":		a.NotionID,
-		"name":		a.Name,
-		"color":	a.Color,
+		"id":    a.NotionID,
+		"name":  a.Name,
+		"color": a.Color,
 	}
 }
 
@@ -35,20 +30,34 @@ type LocalAssignmentStatus struct {
 	NotionID string
 }
 
-/*func Get_AssignmentStatus_byName(name string, db *gorm.DB) *AssignmentStatus {
-	assignmentStatus := &AssignmentStatus{}
-	err := db.Where("name = ?", name).First(assignmentStatus).Error
-	if err != nil {
-		log.Fatalln("Error getting assignment status with name: ", err)
-		return nil
-	}
-	return assignmentStatus
-}*/
-
 func (a *LocalAssignmentStatus) ToMap() map[string]string {
 	return map[string]string{
-		"id":		a.NotionID,
-		"name":		a.Name,
-		"color":	a.Color,
+		"id":    a.NotionID,
+		"name":  a.Name,
+		"color": a.Color,
+	}
+}
+
+type Entity string
+
+const (
+	Assignment   Entity = "assignment"
+	EntityCourse Entity = "course"
+)
+
+type LocalUpdate struct {
+	gorm.Model
+	Entity   Entity
+	EntityID uint
+	Column   string
+	Value    string
+}
+
+func (u *LocalUpdate) ToMap() map[string]string {
+	return map[string]string{
+		"entity":    string(u.Entity),
+		"entity_id": strconv.Itoa(int(u.EntityID)),
+		"column":    u.Column,
+		"value":     u.Value,
 	}
 }

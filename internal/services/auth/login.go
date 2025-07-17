@@ -74,7 +74,7 @@ func Login(username, password string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create/get local database: %w", err)
 	}
-	db = db.Debug()
+
 	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
