@@ -297,15 +297,17 @@ func MigrateAssignments(db *gorm.DB) error {
 
 	for _, ra := range remoteAssignments {
 
-		deadline, err := time.Parse(time.DateOnly, ra["deadline"])
+		fmt.Printf("Assignment remote_id: %s %s %s\n", ra["id"], ra["title"], ra["deadline"])
+
+		deadline, err := time.Parse(time.RFC3339, ra["deadline"])
 		if err != nil {
 
-			return fmt.Errorf("Error formating deadline : %s", err)
+			return fmt.Errorf("error formating deadline : %s", err)
 		}
 
 		remote_id, err := strconv.Atoi(ra["id"])
 		if err != nil {
-			return fmt.Errorf("Error formating remote_id : %s", err)
+			return fmt.Errorf("error formating remote_id : %s", err)
 		}
 
 		localAssignment := assignment.LocalAssignment{

@@ -29,7 +29,7 @@ func main() {
 		log.Fatalf("Failed to connect to local DB: %v", err)
 	}
 
-	tx := localDB.Begin().Debug()
+	tx := localDB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -69,8 +69,6 @@ func migrateCourses(localDB *gorm.DB) error {
 		fmt.Printf("ERROR : %s", err)
 		return err
 	}
-
-	count := 0
 
 	for _, rc := range remoteCourses {
 		remote_id, err := strconv.Atoi(rc["id"])
@@ -118,8 +116,8 @@ func migrateAssignments(localDB *gorm.DB) error {
 	}
 
 	for _, ra := range remoteAssignments {
-
-		deadline, err := time.Parse(time.DateOnly, ra["deadline"])
+		fmt.Printf("Assignment remote_id: %s\n", ra["id"], ra["title"], ra["deadline"])
+		deadline, err := time.Parse(time.RFC3339, ra["deadline"])
 		if err != nil {
 
 			return fmt.Errorf("Error formating deadline : %s", err)

@@ -45,7 +45,7 @@ func (a *LocalAssignment) ToMap() map[string]string {
 		"course_code": a.CourseCode,
 		"title":       a.Title,
 		"type_name":   a.TypeName,
-		"deadline":    a.Deadline.Format(time.DateOnly),
+		"deadline":    a.Deadline.Format(time.RFC3339),
 		"todo":        a.Todo,
 		"status_name": a.StatusName,
 		"link":        a.Link,
@@ -76,7 +76,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 	for _, filter := range filters {
 
 		if filter.Column == "deadline" {
-			deadline, err := time.Parse(time.DateOnly, filter.Value)
+			deadline, err := time.Parse(time.RFC3339, filter.Value)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -90,7 +90,7 @@ func GetAssignmentsbyCourse(course_code string, columns []string, filters []Filt
 	}
 
 	if up_to_date {
-		today := time.Now().Format(time.DateOnly)
+		today := time.Now().Format(time.RFC3339)
 		query += fmt.Sprintf(" AND deadline >= '%v'", today)
 	}
 	query += " ORDER BY deadline ASC"

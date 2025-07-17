@@ -89,7 +89,6 @@ func (c *Course) GetDuration() string {
 	return c.Duration
 }
 
-
 func Get_Course_byId(id uint, db *gorm.DB) (*Course, error) {
 	course := &Course{}
 	err := db.Preload("User").
@@ -132,7 +131,7 @@ func (c *Course) ToMap() map[string]string {
 		"code":        c.Code,
 		"room_number": c.RoomNumber,
 		"duration":    c.Duration,
-		"created_at":  c.CreatedAt.Format(time.DateOnly),
-		"updated_at":  c.UpdatedAt.Format(time.DateOnly),
+		"created_at":  c.CreatedAt.Format(time.RFC3339),
+		"updated_at":  c.UpdatedAt.Format(time.RFC3339),
 	}
 }

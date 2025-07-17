@@ -117,14 +117,14 @@ func (a *Assignment) ToMap() map[string]string {
 		"user_id":     strconv.Itoa(int(a.UserID)),
 		"notion_id":   a.NotionID,
 		"type":        a.TypeName,
-		"deadline":    a.Deadline.Format(time.DateOnly),
+		"deadline":    a.Deadline.Format(time.RFC3339),
 		"title":       a.Title,
 		"todo":        a.Todo,
 		"course_code": a.CourseCode,
 		"link":        a.Link,
 		"status":      a.StatusName,
-		"created_at":  a.CreatedAt.Format(time.DateOnly),
-		"updated_at":  a.UpdatedAt.Format(time.DateOnly),
+		"created_at":  a.CreatedAt.Format(time.RFC3339),
+		"updated_at":  a.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
@@ -162,41 +162,42 @@ func (a *Assignment) Add(db *gorm.DB) (err error) {
 
 	return nil
 }
+
 /*
 func (a *Assignment) Update(col, value string, db *gorm.DB) (err error) {
 
-	err = db.Model(&Assignment{}).Where("id = ?", a.ID).Update(col, value).Error
+		err = db.Model(&Assignment{}).Where("id = ?", a.ID).Update(col, value).Error
 
-	if err != nil {
-		log.Fatalln("Error updating assignment in database: ", err)
-		return err
+		if err != nil {
+			log.Fatalln("Error updating assignment in database: ", err)
+			return err
+		}
+
+		assignment := a.ToMap()
+		assignment[col] = value
+
+		if col == "course_code" {
+			c , _ := course.Get_Course_byCode(value, db)
+			value = c.NotionID
+		}
+
+		var obj map[string]string
+
+		if col == "status" {
+			obj = models.Get_AssignmentStatus_byName(value, db).ToMap()
+		} else {
+			obj = models.Get_AssignmentType_byName(value, db).ToMap()
+		}
+
+		err = a.Update_Notion(col, value, obj)
+
+		if err != nil {
+			log.Fatalln("Error updating assignment to Notion: ", err)
+			return err
+		}
+
+		return nil
 	}
-
-	assignment := a.ToMap()
-	assignment[col] = value
-
-	if col == "course_code" {
-		c , _ := course.Get_Course_byCode(value, db)
-		value = c.NotionID
-	}
-
-	var obj map[string]string
-
-	if col == "status" {
-		obj = models.Get_AssignmentStatus_byName(value, db).ToMap()
-	} else {
-		obj = models.Get_AssignmentType_byName(value, db).ToMap()
-	}
-
-	err = a.Update_Notion(col, value, obj)
-
-	if err != nil {
-		log.Fatalln("Error updating assignment to Notion: ", err)
-		return err
-	}
-
-	return nil
-}
 */
 func (a *Assignment) Delete(db *gorm.DB) (err error) {
 

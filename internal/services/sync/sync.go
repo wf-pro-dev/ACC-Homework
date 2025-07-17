@@ -12,7 +12,6 @@ import (
 )
 
 func Sync(db *gorm.DB) error {
-	db = db.Debug()
 
 	if err := SyncAssignment(db); err != nil {
 		return err
