@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"strings"
 
 	"github.com/spf13/viper"
 
@@ -183,10 +184,14 @@ func notionWebhookHandler(w http.ResponseWriter, r *http.Request) {
 		PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Error getting user: %s", err))
 	}
 
+	db_id := strings.ReplaceAll(payload.Data.Parent.Id, "-", "")
+
+	PrintLog(fmt.Sprintf("Parent ID : %s, Notes DB id : %s", db_id, u.NotesDbId))
+
 	// 4. Handle the payload
 	switch payload.Type {
 	case "page.properties_updated":
-		switch payload.Data.Parent.Id {
+		switch db_id {
 		case u.AssignmentsDbId:
 			WebhookUpdateAssignmentHandler(w, r, payload, u)
 		case u.CoursesDbId:
