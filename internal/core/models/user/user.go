@@ -3,22 +3,23 @@ package user
 import (
 	"fmt"
 	"time"
-	"gorm.io/gorm"
 
-	
+	"gorm.io/gorm"
 )
 
 // User represents the application user
 type User struct {
 	gorm.Model
-	Username     	string `gorm:"unique;not null"`
-	Email        	string `gorm:"unique;not null"`
-	PasswordHash 	string `gorm:"not null"`
-	NotionAPIKey 	string // Encrypted in application layer
+	Username        string `gorm:"unique;not null"`
+	Email           string `gorm:"unique;not null"`
+	PasswordHash    string `gorm:"not null"`
+	NotionAPIKey    string // Encrypted in application layer
+	NotionID        string
 	AssignmentsDbId string
-	NotionID	string
-	CoursesDbId	string
-	LastSync     	*time.Time
+	NotesDbId       string
+	CoursesDbId     string
+
+	LastSync *time.Time
 }
 
 func (u *User) ToMap() map[string]interface{} {
@@ -27,17 +28,17 @@ func (u *User) ToMap() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"id":              u.ID,
-		"username":        u.Username,
-		"email":           u.Email,
-		"assignments_db":  u.AssignmentsDbId,
-		"courses_db":      u.CoursesDbId,
-		"last_sync":       u.LastSync,
-		"created_at":      u.CreatedAt,
-		"updated_at":      u.UpdatedAt,
+		"id":             u.ID,
+		"username":       u.Username,
+		"email":          u.Email,
+		"assignments_db": u.AssignmentsDbId,
+		"courses_db":     u.CoursesDbId,
+		"notes_db":       u.NotesDbId,
+		"last_sync":      u.LastSync,
+		"created_at":     u.CreatedAt,
+		"updated_at":     u.UpdatedAt,
 	}
 }
-
 
 func Get_User_by_NotionID(notion_id string, db *gorm.DB) (*User, error) {
 	u := &User{}

@@ -21,9 +21,10 @@ func init() {
 }
 
 var addCmd = &cobra.Command{
-	Use:   "add",
+	Use:   "add [-a|--assignment] | [-c|--course]",
 	Short: "Add a new assignment or course to the ACC Homework tracker",
-	Long:  `Add a new assignment or course through the ACC Homework API`,
+	Long:  `Add a new assignment or course through the ACC Homework API.`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 		if assignmentFlag {
 			addAssignment()

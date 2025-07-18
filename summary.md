@@ -1,77 +1,122 @@
-### **Investigation Progress: The Case of Morpheus**
+# Eigenvalues, Eigenvectors, and Diagonalization: A Core Concept in Linear Algebra
 
-The ongoing investigation into the elusive serial artist, **Morpheus**, has made significant breakthroughs, focusing on geoprofiling, material analysis, and the identification of a key associate.
+This session delves into **eigenvalues** and **eigenvectors**, foundational concepts crucial for understanding linear transformations and their broad applications in science, engineering, and economics.
 
----
+## What are Eigenvectors and Eigenvalues?
 
-#### **Initial Leads & Geoprofiling**
-*   **Home Base**: The unsub is suspected to have a home base on the ***Gulf Coast of Florida***. Financial transactions from various geoprofile locations are being cross-referenced for wires to or from this region.
-*   **Distinctive Material**: A distinctive **blue chalk spray with a UV-resistant fixative**, first found at Morpheus's art piece in Detroit, was also used in New Orleans years prior. Investigators are checking for common suppliers or nearby sources.
+A **linear transformation** takes a vector as input and outputs another vector, often changing both its magnitude and direction. However, certain special vectors exist:
 
----
+*   **Eigenvectors** (*x*): These are non-zero vectors that, when transformed by a matrix *A*, only change their *magnitude* (stretching or shrinking), not their *direction*. They stay along the same line.
+*   **Eigenvalues** (*λ*): This is the scalar factor by which an eigenvector is scaled. It quantifies the change in magnitude.
 
-#### **Identifying Corey Marlin: The Associate**
-*   **Profile**: **Corey Marlin**, from Tampa, Florida (Gulf Coast), has been identified as a strong candidate for Morpheus's associate or assistant.
-*   **Criminal History**: Marlin served four years in prison for aggravated assault and has numerous outstanding warrants.
-*   **Art Connection**: During his incarceration, Marlin expressed an interest in art, taking a painting class.
-*   **Timeline Match**: Marlin *fell off the face of the earth* in **2007**, precisely when Morpheus *emerged*.
-*   **Financial Link**: Marlin wired money weekly from a Sarasota account to locations matching Morpheus's movements.
-*   **Theories**: Initially, it was believed Marlin might *be* Morpheus, but his lack of artistic skill makes this doubtful. However, he could have been selling art for Morpheus. The association likely ended when the killings began.
+Mathematically, this relationship is defined by the equation:
+```
+Ax = λx
+```
+where *A* is an *n* x *n* matrix, *x* is a non-zero eigenvector, and *λ* is its corresponding eigenvalue.
 
----
+## Finding Eigenvalues: The Characteristic Equation
 
-#### **The Mysterious Blue Blanket**
-A crucial piece of evidence emerged: two halves of the *same* small blue blanket were found at two different crime scenes:
-1.  The **Marcus Ivey crime scene** (where an imposter was responsible for the murder).
-2.  Morpheus's **burnt-out car art piece** (claimed by the real Morpheus).
+To find these special values and vectors, we manipulate the defining equation:
 
-This suggests **Corey Marlin** had access to Morpheus's materials, raising questions about his involvement in the imposter's crime.
+1.  Rearrange: `Ax - λx = 0`
+2.  Introduce the Identity Matrix (*I*): `Ax - λIx = 0`
+3.  Factor out *x*: `(A - λI)x = 0`
 
----
+For a non-zero vector *x* to satisfy this equation, the matrix `(A - λI)` must be **singular** (meaning it does not have an inverse). A singular matrix has a determinant of zero.
 
-#### **Morpheus Makes Contact**
-Morpheus surprisingly contacted Agent Aaron Hotchner, providing a location to find a missing child.
-*   **Key Statements**:
-    *   Denies hurting the child or committing the murders.
-    *   Claims an *imposter* is responsible for the recent crimes.
-    *   Confirms **Corey Marlin** was his partner, but the partnership is over.
-    *   Expressed **significant concern for the child**, which struck investigators.
-*   **Revelation**: Morpheus was confronted with the blue blanket evidence, denying its presence in his work, implying ignorance of its use by the imposter.
+This leads to the **Characteristic Equation**, the key to finding eigenvalues:
 
----
+```
+det(A - λI) = 0
+```
+Solving this polynomial equation for *λ* yields the eigenvalues.
 
-#### **New Hypotheses & Ongoing Search**
-*   **Morpheus's Identity**: The possibility that **Morpheus is female** is being explored, with investigators checking missing women from the Gulf Coast with art school backgrounds or related fields (e.g., graphic design).
-*   **Marlin vs. Morpheus**: The debate continues whether Corey Marlin is the unsub, or if Morpheus (known for *manipulation*) has always been the true unsub, orchestrating events. Agent Rossi still leans towards Corey Marlin, citing his long prison record.
+## Example 1: Finding Eigenvalues and Eigenvectors for a 2x2 Matrix
 
----
+Consider the matrix `A = [2 1; 1 2]`.
 
-#### **Visual Representation**
+1.  **Form `(A - λI)`**:
+    `A - λI = [ (2 - λ) 1; 1 (2 - λ) ]`
 
-*   _Flowchart of Suspect Connections_:
-    ```mermaid
-    graph TD
-        A[Unsub Home Base: Gulf Coast Florida] --> B[Corey Marlin: Tampa, FL]
-        B --> C[Prison Record & Art Interest]
-        C --> D[Timeline Match: Marlin disappeared 2007, Morpheus appeared]
-        B --> E[Wired Money to Morpheus Locations]
-        F[Distinctive Blue Chalk Spray] --> G[Used by Morpheus in Detroit & New Orleans]
-        H[Blue Blanket Piece 1: Marcus Ivey Crime Scene (Imposter)]
-        I[Blue Blanket Piece 2: Morpheus Burnt-Out Car Art (Real Morpheus)]
-        J[Corey Marlin had Access to Morpheus' Materials]
-        H -- Same Blanket --> I
-        J --> H
-    ```
+2.  **Calculate the determinant and set to zero**:
+    `det(A - λI) = (2 - λ)(2 - λ) - (1)(1) = (2 - λ)² - 1 = 0`
+    Expanding gives the **characteristic polynomial**: `λ² - 4λ + 3 = 0`
 
-*   _Hypothetical Image_: A conceptual image representing Morpheus's artistic signature on a piece of art.
-    ![Conceptual Morpheus Art Signature](https://i.imgur.com/example_morpheus_art.png)
-    _This image visually suggests the distinct artistic style and signature associated with Morpheus's work._
+3.  **Solve for eigenvalues**:
+    Factoring: `(λ - 1)(λ - 3) = 0`
+    So, `λ₁ = 1` and `λ₂ = 3` are the eigenvalues.
 
-*   _Code Block (Login Information)_:
-    ```
-    Login_Code_Hotchner = "325 West Warren"
-    Time_Limit = "30 minutes"
-    ```
+4.  **Find corresponding eigenvectors** by solving `(A - λI)x = 0` for each eigenvalue:
+    *   **For `λ₁ = 1`**: Solve `(A - 1I)x = 0`
+        `[1 1; 1 1] [x₁; x₂] = [0; 0]`
+        This implies `x₁ + x₂ = 0`, or `x₁ = -x₂`. Choosing `x₂ = 1`, the eigenvector `v₁ = [-1; 1]`.
+    *   **For `λ₂ = 3`**: Solve `(A - 3I)x = 0`
+        `[-1 1; 1 -1] [x₁; x₂] = [0; 0]`
+        This implies `-x₁ + x₂ = 0`, or `x₁ = x₂`. Choosing `x₂ = 1`, the eigenvector `v₂ = [1; 1]`.
 
-*   _External Reference_:
-    For more on geographic profiling in criminal investigations, refer to [this academic resource](https://www.ncjrs.gov/App/Publications/abstract.aspx?ID=187498) (placeholder link).
+**Geometric Interpretation**: Vectors along the `[-1; 1]` direction are scaled by 1 (i.e., unchanged). Vectors along the `[1; 1]` direction are scaled by 3.
+
+## Example 2: Handling Multiplicity in a 3x3 Matrix
+
+Consider `B = [3 0 0; 0 1 -2; 0 -2 1]`.
+
+1.  **Calculate `det(B - λI) = 0`**:
+    `(3 - λ) * det([ (1 - λ) -2; -2 (1 - λ) ]) = 0`
+    `(3 - λ) * ((1 - λ)² - 4) = 0`
+
+2.  **Solve for eigenvalues**:
+    From `(3 - λ) = 0`, we get `λ = 3`.
+    From `(1 - λ)² - 4 = 0`, we get `(1 - λ)² = 4`, leading to `1 - λ = ±2`. This gives `λ = -1` and `λ = 3`.
+    Thus, eigenvalues are `λ₁ = 3` (with **algebraic multiplicity** 2) and `λ₂ = -1` (with algebraic multiplicity 1).
+
+3.  **Find eigenvectors**:
+    *   For `λ = -1`: `v₁ = [0; 1; 1]`
+    *   For `λ = 3`: `v₂ = [1; 0; 0]` and `v₃ = [0; -1; 1]` (two linearly independent eigenvectors, matching its **geometric multiplicity**).
+
+## Summary of Steps to Find Eigenvalues and Eigenvectors
+
+1.  **Form** the matrix `(A - λI)`. 
+2.  **Calculate** the determinant of `(A - λI)` and set it to zero (`det(A - λI) = 0`) to obtain the **characteristic equation**.
+3.  **Solve** the characteristic equation for `λ`. These are your **eigenvalues**.
+4.  For each eigenvalue `λ`, **solve** the system `(A - λI)x = 0` for non-zero `x`. The solution space for `x` is the **eigenspace**, and any non-zero vector in it is an **eigenvector**.
+
+## Properties of Eigenvalues
+
+Two useful properties for checking calculations:
+
+*   The **sum of the eigenvalues** equals the **trace** of the matrix (sum of main diagonal elements).
+*   The **product of the eigenvalues** equals the **determinant** of the matrix.
+
+## Matrix Diagonalization
+
+A matrix `A` is **diagonalizable** if it is similar to a diagonal matrix `D`. This means there exists an invertible matrix *P* such that:
+
+```
+A = P D P⁻¹
+```
+
+*   `D` is a diagonal matrix containing the **eigenvalues** of `A` on its main diagonal.
+*   `P` (the *modal matrix*) has the corresponding **eigenvectors** of `A` as its columns.
+
+**Why is it useful?** Diagonal matrices are easy to work with. For instance, computing powers of `A` simplifies dramatically: `A^k = P D^k P⁻¹`, where `D^k` simply involves raising each diagonal entry of `D` to the power of `k`.
+
+**Condition for Diagonalization**: An *n* x *n* matrix `A` is diagonalizable **if and only if** it has *n* **linearly independent eigenvectors**.
+
+*   **Defective Matrices**: If, for any eigenvalue, its geometric multiplicity is less than its algebraic multiplicity (meaning you can't find enough linearly independent eigenvectors), the matrix is *not* diagonalizable. Example: `C = [1 1; 0 1]`.
+*   **Special Cases**: 
+    *   **Symmetric matrices** are *always* diagonalizable (and orthogonally diagonalizable).
+    *   Matrices with **distinct eigenvalues** are *always* diagonalizable.
+
+## Applications of Eigenvalues and Eigenvectors
+
+These concepts are not just theoretical; they have profound applications:
+
+*   **Systems of Linear Differential Equations**: Simplifying coupled systems into decoupled ones.
+*   **Markov Chains**: Analyzing long-term behavior and steady-state distributions of systems.
+*   **Principal Component Analysis (PCA)** in Data Science: Identifying main directions of variance in data for dimensionality reduction and feature extraction.
+*   **Physics and Mechanics**: Describing principal axes of inertia, normal modes of vibration, and quantum mechanical states.
+
+## Conclusion
+
+Eigenvalues, eigenvectors, and diagonalization provide a powerful framework for understanding and simplifying linear transformations. By identifying special directions (eigenvectors) along which transformations merely scale (by eigenvalues), we gain deep insights into complex systems. Mastery of these concepts is fundamental for advanced topics in linear algebra and its widespread practical applications.

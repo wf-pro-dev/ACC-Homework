@@ -2,8 +2,6 @@ package completion
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -84,41 +82,11 @@ func DeadlineCompletion(assignment_id string) ([]string, cobra.ShellCompDirectiv
 }
 
 func EditCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	userID, err := local.GetCurrentUserID()
-	if err != nil {
-		fmt.Println("Error getting current user ID:", err)
-		return nil, cobra.ShellCompDirectiveError
-	}
-
-	db, err := local.GetLocalDB(userID)
-	if err != nil {
-		fmt.Println("[ERROR] DB connection error:", err)
-		return nil, cobra.ShellCompDirectiveError
-	}
 
 	switch len(args) {
 	case 0:
 		// First argument: assignment IDs
-		wd, err := os.Getwd()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		baseName := filepath.Base(wd)
-		query := fmt.Sprintf("SELECT remote_id, title FROM local_assignments WHERE course_code = '%s' ORDER BY remote_id ASC", baseName)
-		var assignments []assignment.LocalAssignment
-		err = db.Raw(query).Scan(&assignments).Error
-		if err != nil {
-			fmt.Println("[ERROR] Query error:", err)
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		var assignmentIDs []string
-		for _, assignment := range assignments {
-			completion := fmt.Sprintf("%d\t%s", assignment.RemoteID, assignment.Title)
-			assignmentIDs = append(assignmentIDs, completion)
-		}
-		return assignmentIDs, cobra.ShellCompDirectiveNoFileComp
+		return AssignmentIdCompletion()
 
 	case 1:
 		// Second argument: columns

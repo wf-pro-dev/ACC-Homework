@@ -249,6 +249,11 @@ func UpdateAssignment(id, column, value string) error {
 	return nil
 }
 
+func DeleteAssignment(id string) error {
+
+	return UpdateAssignment(id, "deleted_at", time.Now().Format(time.RFC3339))
+}
+
 func SendUpdate(id, column, value string) error {
 
 	new_client, err := NewClient()
@@ -287,8 +292,6 @@ func SendUpdate(id, column, value string) error {
 
 func MigrateAssignments(db *gorm.DB) error {
 
-	count := 0
-
 	remoteAssignments, err := GetAssignments()
 	if err != nil {
 		fmt.Printf("ERROR : %s", err)
@@ -296,8 +299,6 @@ func MigrateAssignments(db *gorm.DB) error {
 	}
 
 	for _, ra := range remoteAssignments {
-
-		fmt.Printf("Assignment remote_id: %s %s %s\n", ra["id"], ra["title"], ra["deadline"])
 
 		deadline, err := time.Parse(time.RFC3339, ra["deadline"])
 		if err != nil {
@@ -325,13 +326,14 @@ func MigrateAssignments(db *gorm.DB) error {
 
 		if err := db.First(&localAssignment, "remote_id = ?", remote_id).Error; err == nil {
 			continue
-		}
-
-		if err := db.Create(&localAssignment).Error; err != nil {
-			count++
+		} else if err == gorm.ErrRecordNotFound {
+			if err := db.Create(&localAssignment).Error; err != nil {
+				return err
+			}
+		} else {
 			return err
 		}
-		count++
+
 	}
 
 	return nil

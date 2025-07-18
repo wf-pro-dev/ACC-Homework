@@ -1,13 +1,8 @@
 package assignment
 
 import (
-	"bufio"
-	"fmt"
 	"log"
-	"os"
-	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/williamfotso/acc/internal/core/models"
@@ -38,46 +33,6 @@ type Assignment struct {
 type Filter struct {
 	Column string
 	Value  string
-}
-
-// NewAssignment creates a new Assignment by prompting user for input
-// This is equivalent to the createAssign function but returns a struct
-func NewAssignment() *Assignment {
-
-	fmt.Println("===== Creating new Assignement =====")
-
-	assignment := &Assignment{}
-	scanner := bufio.NewScanner(os.Stdin)
-
-	fmt.Printf("The type (HW or Exam): ")
-	scanner.Scan()
-	assignment.TypeName = scanner.Text()
-
-	fmt.Printf("The deadline (yyyy-mm-dd): ")
-	scanner.Scan()
-	deadline, err := time.Parse(time.DateOnly, scanner.Text())
-	if err != nil {
-		log.Fatal("Error parsing deadline: ", err)
-	}
-	assignment.Deadline = deadline
-
-	fmt.Printf("The title: ")
-	scanner.Scan()
-	assignment.Title = scanner.Text()
-
-	fmt.Printf("The todo: ")
-	scanner.Scan()
-	assignment.Todo = scanner.Text()
-
-	// Get course code from current directory name
-	pwd := os.Getenv("PWD")
-	cmd := exec.Command("basename", pwd)
-	output, _ := cmd.CombinedOutput()
-	assignment.CourseCode = strings.TrimSpace(string(output))
-
-	assignment.Link = "https://acconline.austincc.edu/ultra/stream"
-
-	return assignment
 }
 
 func Get_Assignment_byId(id, user_id uint, db *gorm.DB) (*Assignment, error) {

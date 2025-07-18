@@ -186,7 +186,14 @@ func notionWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// 4. Handle the payload
 	switch payload.Type {
 	case "page.properties_updated":
-		WebhookUpdateHandler(w, r, payload, u)
+		switch payload.Data.Parent.Id {
+		case u.AssignmentsDbId:
+			WebhookUpdateAssignmentHandler(w, r, payload, u)
+		case u.CoursesDbId:
+			WebhookUpdateCourseHandler(w, r, payload, u)
+		case u.NotesDbId:
+			WebhookUpdateNoteHandler(w, r, payload, u)
+		}
 	case "page.created":
 		WebhookCreateHandler(w, r, payload, u)
 	case "page.deleted":

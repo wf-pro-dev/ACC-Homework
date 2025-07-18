@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/williamfotso/acc/cmd/completion"
 	"github.com/williamfotso/acc/internal/services/client"
+	"github.com/williamfotso/acc/internal/storage/local"
 	"github.com/williamfotso/acc/internal/types"
 	//"github.com/williamfotso/acc/cmd/completion"
 )
@@ -26,26 +27,29 @@ func init() {
 }
 
 var editCmd = &cobra.Command{
-	Use:               "edit",
+	Use:               "edit [assignment] [column] [value]",
 	Short:             "Edit an existing assignment in the ACC Homework tracker.",
 	Long:              `Edit an existing assignment in the ACC Homework tracker.`,
 	ValidArgsFunction: completion.EditCompletion,
 	Args: func(cmd *cobra.Command, args []string) error {
 
-		/*db, DBerr := database.GetDB()
-		if DBerr != nil {
-			return DBerr
-		}*/
-
-		var err error
-
 		if len(args) != 3 {
 			return fmt.Errorf("edit-acc requires exactly 3 arguments")
 		}
 
-		/*if err = ValidateAssignmentId(args[0], db); err != nil {
+		userID, err := local.GetCurrentUserID()
+		if err != nil {
 			return err
-		}*/
+		}
+
+		db, err := local.GetLocalDB(userID)
+		if err != nil {
+			return err
+		}
+
+		if err = ValidateAssignmentId(args[0], db); err != nil {
+			return err
+		}
 
 		if err = ValidateColumn(args[1]); err != nil {
 			return err

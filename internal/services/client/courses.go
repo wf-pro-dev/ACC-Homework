@@ -159,8 +159,6 @@ func CreateCourse(courseData map[string]string) (map[string]string, error) {
 
 func MigrateCourses(db *gorm.DB) error {
 
-	count := 0
-
 	remoteCourses, err := GetCourses()
 	if err != nil {
 		fmt.Printf("ERROR : %s", err)
@@ -184,13 +182,14 @@ func MigrateCourses(db *gorm.DB) error {
 
 		if err := db.First(&localCourse, "remote_id = ?", remote_id).Error; err == nil {
 			continue
-		}
-
-		if err := db.Create(&localCourse).Error; err != nil {
-			count++
+		} else if err == gorm.ErrRecordNotFound {
+			if err := db.Create(&localCourse).Error; err != nil {
+				return err
+			}
+		} else {
 			return err
 		}
-		count++
+
 	}
 
 	return nil
