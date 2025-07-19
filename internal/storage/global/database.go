@@ -13,6 +13,7 @@ import (
 	"github.com/williamfotso/acc/internal/core/models"
 	"github.com/williamfotso/acc/internal/core/models/assignment"
 	"github.com/williamfotso/acc/internal/core/models/course"
+	"github.com/williamfotso/acc/internal/core/models/notes"
 	"github.com/williamfotso/acc/internal/core/models/user"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -65,6 +66,7 @@ func InitGlobalDB() error {
 		&models.AssignmentType{},
 		&models.AssignmentStatus{},
 		&assignment.Assignment{},
+		&notes.Notes{},
 		&models.SyncLog{},
 	)
 	if err != nil {

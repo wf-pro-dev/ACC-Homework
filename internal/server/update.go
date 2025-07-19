@@ -61,7 +61,7 @@ func WebhookUpdateAssignmentHandler(w http.ResponseWriter, r *http.Request, payl
 		}
 
 		// 9. Get the new value from the property
-		value := GetValue(w, property, column, tx)
+		value := GetAssignmentValue(w, property, column, tx)
 
 		// Log the update
 		PrintLog(fmt.Sprintf("page_id %s property_id %s column %s value %s",
@@ -157,7 +157,7 @@ func WebhookUpdateCourseHandler(w http.ResponseWriter, r *http.Request, payload 
 		}
 
 		// 9. Get the new value from the property
-		value := GetValue(w, property, column, tx)
+		value := GetAssignmentValue(w, property, column, tx)
 
 		// Log the update
 		PrintLog(fmt.Sprintf("page_id %s property_id %s column %s value %s",
@@ -207,6 +207,19 @@ func WebhookUpdateCourseHandler(w http.ResponseWriter, r *http.Request, payload 
 }
 
 func WebhookUpdateNoteHandler(w http.ResponseWriter, r *http.Request, payload types.NotionWebhookPayload, u *user.User) {
+
+	dbVal := r.Context().Value("db")
+	if dbVal == nil {
+		PrintERROR(w, http.StatusInternalServerError, "Database connection not found")
+		return
+	}
+
+	db, ok := dbVal.(*gorm.DB)
+	if !ok {
+		PrintERROR(w, http.StatusInternalServerError, "Invalid database connection")
+		return
+	}
+
 	//  Get the page id
 	page_id := payload.Entity.Id
 
@@ -219,12 +232,73 @@ func WebhookUpdateNoteHandler(w http.ResponseWriter, r *http.Request, payload ty
 			PrintERROR(w, http.StatusInternalServerError, fmt.Sprintf("Fetching properties: %s", err))
 			return
 		}
+		column := types.NOTES_COLUMNS[property_id]
+		if column == "" {
+			PrintERROR(w, http.StatusInternalServerError,
+				fmt.Sprintf("Column not found for id: %s", property_id))
+			return
+		}
 
-		PrintLog(fmt.Sprintf("property %s", property))
+		value := GetNoteValue(w, property, column, db)
+
+		PrintLog(fmt.Sprintf("page_id %s property_id %s column %s value %s",
+			page_id, property_id, column, value))
 
 	}
 }
-func GetValue(w http.ResponseWriter, property []byte, column string, db *gorm.DB) string {
+
+func GetNoteValue(w http.ResponseWriter, property []byte, column string, db *gorm.DB) string {
+	var value string
+	switch column {
+	case "course_code":
+		var coursesType types.Courses
+		json.Unmarshal(property, &coursesType)
+
+		if len(coursesType.Relation) > 0 {
+			course := course.Get_Course_byNotionID(coursesType.Relation[0].ID, db)
+
+			if course == nil {
+				value = ""
+				err := fmt.Errorf("course not found")
+				PrintERROR(w, http.StatusInternalServerError,
+					fmt.Sprintf("Error getting course: %s", err))
+			} else {
+				value = course.Code
+			}
+		}
+	case "title":
+		var titleType types.Title
+		json.Unmarshal(property, &titleType)
+		value = titleType.Title[0].PlainText
+
+	case "doc":
+		var docType types.Doc
+		json.Unmarshal(property, &docType)
+		for _, file := range docType.Files {
+			value += file.File.URL + ", "
+		}
+
+	case "date":
+		var dateType types.Date
+		json.Unmarshal(property, &dateType)
+		value = *dateType.Date.Start
+	case "keywords":
+		var keywordsType types.Keywords
+		json.Unmarshal(property, &keywordsType)
+		for _, keyword := range keywordsType.RichText {
+			value += keyword.PlainText + ", "
+		}
+	case "transcript":
+		var transcriptType types.Transcript
+		json.Unmarshal(property, &transcriptType)
+		for _, transcript := range transcriptType.RichText {
+			value += transcript.PlainText + ", "
+		}
+	}
+	return value
+}
+
+func GetAssignmentValue(w http.ResponseWriter, property []byte, column string, db *gorm.DB) string {
 	var value string
 	switch column {
 
